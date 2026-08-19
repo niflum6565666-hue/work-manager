@@ -206,7 +206,7 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
       <button onclick="openSyncModal()" style="background:none;border:.5px solid var(--bm);border-radius:4px;padding:2px 9px;font-size:10px;cursor:pointer;color:var(--ts);display:flex;align-items:center;gap:4px" title="PCとiPadでデータをリアルタイム同期します"><i class="ti ti-refresh"></i> 同期設定</button>
     </div>
   </div>
-  <datalist id="dl-s"></datalist><datalist id="dl-p"></datalist><datalist id="dl-c"></datalist><datalist id="dl-ci"></datalist><datalist id="dl-t"></datalist>
+  <datalist id="dl-s"></datalist><datalist id="dl-p"></datalist><datalist id="dl-c"></datalist><datalist id="dl-ci"></datalist><datalist id="dl-t"></datalist><datalist id="dl-nm"></datalist><datalist id="dl-f"></datalist>
 
   <div class="tabs">
     <div class="tab on" onclick="sw('dash')"><i class="ti ti-layout-dashboard"></i> ダッシュ</div>
@@ -315,8 +315,13 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
           <label><input type="radio" name="itype" id="itype-g" value="外注"><span>外注</span></label>
           <label><input type="radio" name="itype" id="itype-j" value="自社" checked><span>自社</span></label>
         </div>
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;white-space:nowrap;cursor:pointer;background:#FFF3D6;border:.5px solid #E8A339;border-radius:5px;padding:4px 8px" title="現場名・名称・品名・サイズ・仕上げ・数量だけの簡易入力に切り替えます"><input type="checkbox" id="item-est" onchange="toggleEstCheckForm()"> 見積りチェック</label>
         <input class="w" list="dl-s" id="item-s" placeholder="現場名">
+        <span id="item-form-est-name" style="display:none">
+        <input class="w" list="dl-nm" id="item-est-name" placeholder="名称（例：レストラン・カウンター）" style="width:150px">
+        </span>
         <input class="w" list="dl-p" id="item-p" placeholder="品名・内容">
+        <span id="item-form-full" style="display:contents">
         <span class="sep" style="font-size:10px">工程日</span>
         <input type="text" class="d" id="item-pd" onchange="onItemPdChange()" onclick="openCalPop('item-pd')" readonly placeholder="日付選択" style="cursor:pointer">
         <button type="button" class="xb cal-trigger" onclick="openCalPop('item-pd')" title="休日を色分けして確認しながら選択"><i class="ti ti-calendar"></i></button>
@@ -336,6 +341,15 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
         <span class="sep" style="font-size:10px">取付想定</span>
         <input type="number" id="item-im" step="0.5" min="0" placeholder="人数" style="width:56px;padding:5px 6px;border:.5px solid var(--bm);border-radius:5px;font-size:11px;background:var(--bs);color:var(--tp)" title="取付に必要な想定人数（0.5人単位）">
         <label style="display:flex;align-items:center;gap:3px;font-size:11px;white-space:nowrap;cursor:pointer" title="取付人数なしで、郵送や持ち込み納品のみの対応です"><input type="checkbox" id="item-do"> 納品のみ</label>
+        </span>
+        <span id="item-form-est" style="display:none">
+        <input class="w" id="item-est-size" placeholder="サイズ（例：W1100×D700×H1190／DHL・DH+延べも可）" style="width:220px">
+        <input class="w" id="item-est-finish" list="dl-f" placeholder="仕上げ（コピペ）" style="width:160px">
+        <span class="sep" style="font-size:10px">数量</span>
+        <button type="button" class="xb" onclick="stepEstFormQty(-1)">−</button>
+        <input type="number" id="item-est-qty" min="1" step="1" value="1" style="width:44px;padding:5px 4px;border:.5px solid var(--bm);border-radius:5px;font-size:11px;text-align:center">
+        <button type="button" class="xb" onclick="stepEstFormQty(1)">＋1</button>
+        </span>
         <button class="pbtn" onclick="addItem()">追加</button>
       </div>
       <div id="item-type-note" style="font-size:10px;color:var(--ts)"></div>
@@ -346,6 +360,7 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
         <span style="width:1px;height:14px;background:var(--bt);flex-shrink:0;margin:0 2px"></span>
         <button class="fb" id="iview-sch" onclick="setIView('sch')">📅 工程表</button>
         <button class="fb on" id="iview-tbl" onclick="setIView('tbl')">一覧</button>
+        <button class="fb" id="iview-est" onclick="setIView('est')">💰 見積り</button>
         <span style="width:1px;height:14px;background:var(--bt);flex-shrink:0;margin:0 2px"></span>
         <button class="fb on" id="icol-pd" onclick="setItemCol('pd')">工程日</button>
         <button class="fb on" id="icol-memo" onclick="setItemCol('memo')">メモ</button>
@@ -354,9 +369,15 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
         <button class="copy-btn" id="factory-copy-btn" onclick="copyFactoryImage(this)" style="border-color:#0F6E56;color:#0F6E56" title="工場進捗ボードを画像化してクリップボードにコピーします（LINEにそのまま貼り付け可）"><i class="ti ti-copy"></i> 工場用コピペ</button>
         <button class="copy-btn" id="item-copy-all-btn" onclick="copyAllItems()"><i class="ti ti-copy"></i> 全現場まとめコピー</button>
       </div>
-      <div id="item-alert"></div>
-      <div id="mp-weekly"></div>
-      <div id="item-groups"></div>
+      <div id="item-progress-wrap">
+        <div id="item-alert"></div>
+        <div id="mp-weekly"></div>
+        <div id="item-groups"></div>
+      </div>
+      <div id="item-est-wrap" style="margin-top:16px">
+        <div class="sh">💰 見積り</div>
+        <div id="item-est-section"></div>
+      </div>
     </div>
   </div>
 
@@ -555,7 +576,7 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
 <!-- 見積りモーダル -->
 <div class="modal-ov" id="est-modal">
   <div class="modal" style="max-width:480px;max-height:88vh;overflow-y:auto">
-    <div class="modal-title"><i class="ti ti-calculator"></i> 簡易見積り <span id="est-item-label" style="font-size:11px;color:var(--ts);font-weight:400"></span></div>
+    <div class="modal-title"><i class="ti ti-calculator"></i> 簡易見積り <span id="est-item-label" style="font-size:11px;color:var(--ts);font-weight:400"></span><button class="copy-btn" id="est-copy-btn" style="margin-left:auto" onclick="copyEstSummary()" title="見積り内容をテキストでコピー"><i class="ti ti-copy"></i> コピー</button></div>
 
     <div style="font-size:10px;font-weight:700;color:var(--ts);margin:4px 0 4px">① 原価</div>
     <div class="modal-row">
@@ -563,6 +584,7 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
       <input type="number" id="est-material-cost" step="1" min="0" placeholder="例：12→12,000円" style="flex:1;min-width:80px" oninput="renderEstCalc()">
       <span style="font-size:10px;color:var(--ts)">千円</span>
     </div>
+    <div id="est-material-quotes-ref" style="font-size:10px;color:var(--ts);margin:-2px 0 6px;padding:4px 6px;background:var(--bs);border-radius:5px;display:none"></div>
     <div class="modal-row" style="flex-wrap:wrap">
       <label>作図人工</label>
       <input type="number" id="est-mp-drawing" step="0.5" min="0" style="flex:none;width:64px" oninput="renderEstCalc()">
@@ -679,15 +701,227 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
   </div>
 </div>
 
+<!-- 仕様詳細モーダル（見積りチェック項目の規格） -->
+<div class="modal-ov" id="est-spec-modal">
+  <div class="modal" style="max-width:480px;max-height:88vh;overflow-y:auto">
+    <div class="modal-title"><i class="ti ti-list-details"></i> 仕様詳細 <span id="spec-item-label" style="font-size:11px;color:var(--ts);font-weight:400"></span></div>
+
+    <div class="modal-row">
+      <label>現場名</label>
+      <input id="spec-site" list="dl-s">
+    </div>
+    <div class="modal-row">
+      <label>記号</label>
+      <button type="button" class="xb" onclick="stepSpecSymbol(-1)">−</button>
+      <input id="spec-symbol" placeholder="1 / A / あ" style="flex:none;width:70px;text-align:center;font-weight:700" oninput="renderSpecPreview()">
+      <button type="button" class="xb" onclick="stepSpecSymbol(1)">＋</button>
+    </div>
+    <div class="modal-row">
+      <label>名称</label>
+      <input id="spec-name" list="dl-nm">
+    </div>
+    <div class="modal-row">
+      <label>品名</label>
+      <input id="spec-product" list="dl-p">
+    </div>
+    <div class="modal-row" style="flex-wrap:wrap;gap:4px">
+      <label style="width:100%;margin-bottom:2px">サイズ</label>
+      <input type="hidden" id="spec-size-mode" value="free">
+      <div style="display:flex;gap:3px;width:100%;margin-bottom:4px;flex-wrap:wrap">
+        <button type="button" class="xb spec-size-mode-btn" data-mode="free" onclick="setSpecSizeMode('free')">自由入力</button>
+        <button type="button" class="xb spec-size-mode-btn" data-mode="wh" onclick="setSpecSizeMode('wh')">WHのみ</button>
+        <button type="button" class="xb spec-size-mode-btn" data-mode="whd" onclick="setSpecSizeMode('whd')">WHD</button>
+        <button type="button" class="xb spec-size-mode-btn" data-mode="dhl" onclick="setSpecSizeMode('dhl')">DHL</button>
+        <button type="button" class="xb spec-size-mode-btn" data-mode="dh" onclick="setSpecSizeMode('dh')">DH＋延べ</button>
+        <button type="button" class="xb spec-size-mode-btn" data-mode="dw" onclick="setSpecSizeMode('dw')">DW＋延べ</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:400;width:100%;margin-bottom:2px"><input type="checkbox" id="spec-size-calc-enabled" style="width:auto;flex:none;padding:0" onchange="renderSpecSizeCalc()"> ㎡を計算する</label>
+      <div id="spec-size-free" style="width:100%">
+        <input id="spec-size" placeholder="例：W1100×D700×H1190（コピペ）" oninput="renderSpecPreview()">
+      </div>
+      <div id="spec-size-wh" style="display:none;width:100%;gap:3px;align-items:center">
+        W<input id="spec-w-wh" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        ×H<input id="spec-h-wh" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        <span style="font-size:10px;color:var(--ts)">mm（＋で足し算可）</span>
+      </div>
+      <div id="spec-size-whd" style="display:none;width:100%;gap:3px;align-items:center">
+        W<input id="spec-w-whd" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        ×H<input id="spec-h-whd" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        ×D<input id="spec-d-whd" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        <span style="font-size:10px;color:var(--ts)">mm（＋で足し算可）</span>
+      </div>
+      <div id="spec-size-dhl" style="display:none;width:100%;gap:3px;align-items:center">
+        D<input id="spec-d-dhl" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        ×H<input id="spec-h-dhl" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        ×L<input id="spec-l-dhl" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        <span style="font-size:10px;color:var(--ts)">mm（＋で足し算可）</span>
+      </div>
+      <div id="spec-size-dh" style="display:none;width:100%;gap:3px;align-items:center">
+        D<input id="spec-d-dh" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        ×H<input id="spec-h-dh" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        <span style="font-size:10px;color:var(--ts)">mm（＋で足し算可）・延べ長さは数量欄(m)で入力</span>
+      </div>
+      <div id="spec-size-dw" style="display:none;width:100%;gap:3px;align-items:center">
+        D<input id="spec-d-dw" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        ×W<input id="spec-w-dw" type="text" inputmode="decimal" placeholder="例：1120+2140" style="width:90px" oninput="renderSpecSizeCalc()">
+        <span style="font-size:10px;color:var(--ts)">mm（＋で足し算可）・延べ長さは数量欄(m)で入力</span>
+      </div>
+      <div id="spec-size-calc" style="width:100%;font-size:10px;color:var(--ts);margin-top:2px"></div>
+      <div style="width:100%;margin-top:6px;border-top:.5px dashed var(--bt);padding-top:6px">
+        <label style="font-size:11px;color:var(--ts);display:block;margin-bottom:4px">塗装詳細（項目名＋WH×数量／隣の＋で行追加）</label>
+        <div id="spec-paint-rows"></div>
+      </div>
+    </div>
+    <div class="modal-row">
+      <label>仕上げ</label>
+      <input id="spec-finish" list="dl-f" placeholder="仕上げ（コピペ）">
+    </div>
+    <div style="margin-bottom:4px">
+      <label style="font-size:11px;color:var(--ts);display:block;margin-bottom:4px">仕様（コピペ・1行ずつ／隣の＋で行追加）</label>
+      <div id="spec-note-rows"></div>
+    </div>
+    <div class="modal-row">
+      <label id="spec-qty-label">数量</label>
+      <button type="button" class="xb" onclick="stepSpecQty(-1)">−</button>
+      <input type="text" inputmode="decimal" id="spec-qty" placeholder="例：1.2+3.4" style="flex:none;width:84px;text-align:center" oninput="renderSpecSizeCalc()">
+      <button type="button" class="xb" onclick="stepSpecQty(1)">＋</button>
+      <input type="hidden" id="spec-qty-unit" value="count">
+      <span style="display:inline-flex;gap:2px;margin-left:8px">
+        <button type="button" class="xb spec-qty-unit-btn" data-unit="count" onclick="setSpecQtyUnit('count')">個数</button>
+        <button type="button" class="xb spec-qty-unit-btn" data-unit="length" onclick="setSpecQtyUnit('length')">延べ(m)</button>
+      </span>
+    </div>
+    <div style="border-top:.5px solid var(--bt);margin:6px 0 10px"></div>
+
+    <div class="modal-row">
+      <label>コーナー箇所数</label>
+      <input type="text" inputmode="decimal" id="spec-corner" placeholder="例：2+1" style="flex:none;width:70px" oninput="renderSpecPreview()">
+      <span style="font-size:10px;color:var(--ts)">ヶ所</span>
+      <label style="margin-left:8px">ジョイント箇所数</label>
+      <input type="text" inputmode="decimal" id="spec-joint" placeholder="例：2+1" style="flex:none;width:70px" oninput="renderSpecPreview()">
+      <span style="font-size:10px;color:var(--ts)">ヶ所</span>
+    </div>
+
+    <div class="modal-row" style="flex-wrap:wrap;gap:4px 10px;align-items:center">
+      <label style="width:100%;margin-bottom:2px">材質（複数選択可）</label>
+      <span style="font-size:11px;font-weight:600;color:var(--ts);width:100%;margin-top:2px">ST</span>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-material-cb" value="STボンデ" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> ボンデ</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-material-cb" value="ST黒皮" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> 黒皮</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-material-cb" value="ST素地" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> 素地</label>
+      <span style="font-size:11px;font-weight:600;color:var(--ts);width:100%;margin-top:4px">SUS</span>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-material-cb" value="SUS2B" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> 2B</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-material-cb" value="SUSHL" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> HL</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-material-cb" value="SUS鏡面#400" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> 鏡面＃400</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-material-cb" value="SUS鏡面#800" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> 鏡面＃800</label>
+      <span style="font-size:11px;font-weight:600;color:var(--ts);width:100%;margin-top:4px">その他</span>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-material-cb" value="アルミ" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> アルミ</label>
+    </div>
+    <div class="modal-row">
+      <label>自由入力</label>
+      <input id="spec-material-other" placeholder="一覧にない材質があれば入力" oninput="renderSpecPreview()">
+    </div>
+
+    <div class="modal-row">
+      <label>厚み</label>
+      <input id="spec-thickness" placeholder="例：1.5" style="flex:none;width:70px" oninput="renderSpecPreview()">
+      <span style="font-size:10px;color:var(--ts)">t（自動で付きます）</span>
+    </div>
+
+    <div style="margin-bottom:4px">
+      <label style="font-size:11px;color:var(--ts);display:block;margin-bottom:4px">鋼材（コピペ・1行ずつ／隣の＋で行追加）</label>
+      <div id="spec-steel-rows"></div>
+    </div>
+
+    <div class="modal-row" style="flex-wrap:wrap;gap:4px 10px;align-items:center">
+      <label style="width:100%;margin-bottom:2px">加工（複数選択可）</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-proc-cb" value="レーザー切断" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> レーザー切断</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-proc-cb" value="折り" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> 折り</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-proc-cb" value="溶接" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> 溶接</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-proc-cb" value="さび止め" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> さび止め</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-proc-cb" value="焼付塗装" id="spec-proc-bake" style="width:auto;flex:none;padding:0" onchange="syncSpecPaintColors()"> 焼付塗装</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-proc-cb" value="クリア塗装" id="spec-proc-clear" style="width:auto;flex:none;padding:0" onchange="syncSpecPaintColors()"> クリア塗装</label>
+    </div>
+    <div class="modal-row" id="spec-bake-color-row" style="display:none">
+      <label>焼付塗装 色</label>
+      <input id="spec-bake-color" placeholder="色（空欄可・未決定）" oninput="renderSpecPreview()">
+    </div>
+    <div class="modal-row" id="spec-clear-color-row" style="display:none">
+      <label>クリア塗装 色</label>
+      <input id="spec-clear-color" placeholder="色（空欄可・未決定）" oninput="renderSpecPreview()">
+    </div>
+
+    <div class="modal-row" style="flex-wrap:wrap;gap:4px 10px;align-items:center">
+      <label style="width:100%;margin-bottom:2px">留め方（複数選択可）</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-fastener-cb" value="ビス" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> ビス</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-fastener-cb" value="ボルト" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> ボルト</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-fastener-cb" value="アンカー" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> アンカー</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-fastener-cb" value="天井吊り" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> 天井吊り</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;font-weight:400;white-space:nowrap"><input type="checkbox" class="spec-fastener-cb" value="接着" style="width:auto;flex:none;padding:0" onchange="renderSpecPreview()"> 接着</label>
+    </div>
+
+    <div class="modal-row" style="background:var(--bs);border-radius:6px;padding:6px 8px;margin-top:4px;align-items:flex-start">
+      <label style="padding-top:2px">プレビュー</label>
+      <div id="spec-preview" style="font-size:11px;color:var(--tp);line-height:1.5;flex:1"></div>
+    </div>
+
+    <div style="margin-top:10px;padding-top:8px;border-top:.5px solid var(--bt)">
+      <button class="copy-btn" style="border-color:#0F6E56;color:#0F6E56;width:100%;justify-content:center" onclick="convertEstToProgress(estSpecItemId)"><i class="ti ti-arrow-right"></i> 進行中へ移行</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="pbtn" style="background:var(--bs);color:var(--tp);border:.5px solid var(--bm)" onclick="closeEstSpecModal()">キャンセル</button>
+      <button class="pbtn" style="background:#2E6FBF" onclick="saveEstSpecModal(true)"><i class="ti ti-checkbox"></i> 仮チェックして保存</button>
+      <button class="pbtn grn" onclick="saveEstSpecModal()"><i class="ti ti-circle-check"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 見積り項目クイック追加ポップアップ -->
+<div class="modal-ov" id="qa-est-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title"><i class="ti ti-plus"></i> 見積り項目を追加 <span id="qa-est-site-label" style="font-size:11px;color:var(--ts);font-weight:400"></span></div>
+    <div class="modal-row">
+      <label>名称</label>
+      <input id="qa-est-name" list="dl-nm">
+    </div>
+    <div class="modal-row">
+      <label>品名</label>
+      <input id="qa-est-product" list="dl-p">
+    </div>
+    <div class="modal-row">
+      <label>サイズ</label>
+      <input id="qa-est-size">
+    </div>
+    <div class="modal-row">
+      <label>仕上げ</label>
+      <input id="qa-est-finish" list="dl-f">
+    </div>
+    <div style="margin-bottom:4px">
+      <label style="font-size:11px;color:var(--ts);display:block;margin-bottom:4px">仕様（コピペ・1行ずつ／隣の＋で行追加）</label>
+      <div id="qa-est-spec-rows"></div>
+    </div>
+    <div class="modal-row">
+      <label>数量</label>
+      <button type="button" class="xb" onclick="stepQaEstQty(-1)">−</button>
+      <input type="number" id="qa-est-qty" min="1" step="1" value="1" style="flex:none;width:56px;text-align:center">
+      <button type="button" class="xb" onclick="stepQaEstQty(1)">＋</button>
+    </div>
+    <div class="modal-actions">
+      <button class="pbtn" style="background:var(--bs);color:var(--tp);border:.5px solid var(--bm)" onclick="closeQaEstModal()">キャンセル</button>
+      <button class="pbtn grn" onclick="submitQaEstModal()"><i class="ti ti-circle-check"></i> 追加して閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- 概算見積り（簡易）モーダル -->
 <div class="modal-ov" id="quick-est-modal">
   <div class="modal" style="max-width:380px">
     <div class="modal-title"><i class="ti ti-bolt"></i> 概算見積り（簡易） <span id="qe-item-label" style="font-size:11px;color:var(--ts);font-weight:400"></span></div>
     <div style="font-size:10px;font-weight:700;color:var(--ts);margin:4px 0 4px;display:flex;justify-content:space-between;align-items:center">
-      材料見積
-      <button class="pbtn sm" onclick="addQeMaterialQuoteRow()">+ 見積追加</button>
+      項目
+      <button class="pbtn sm" onclick="addQeMaterialQuoteRow()">＋ 見積り追加</button>
     </div>
-    <div style="font-size:9px;color:var(--tt);margin-bottom:4px">見積回答が届くたびに項目名と金額を1件ずつ追加してください。</div>
+    <div style="font-size:9px;color:var(--tt);margin-bottom:4px">材料費・加工費など、基本原価の内訳を項目ごとに1件ずつ追加してください。</div>
     <div id="qe-material-quotes"></div>
     <div id="qe-material-quotes-sum" style="font-size:10px;color:var(--ts);text-align:right;margin-top:2px"></div>
 
@@ -1047,12 +1281,12 @@ function confirmedSites(){return sites.filter(s=>(s.status??0)>=2);}
 function weeklyManpowerBySite(){
   const bySite={};
   function rec(site){if(!bySite[site])bySite[site]={weeks:{}};return bySite[site];}
-  items.filter(x=>!isDone(x)&&x.type!=='外注'&&(Number(x.installManpower)||0)>0&&x.installDate).forEach(x=>{
+  items.filter(x=>!isDone(x)&&!x.deliveryOnly&&(x.type!=='外注'||x.materialOnlyOutsource)&&(Number(x.installManpower)||0)>0&&x.installDate).forEach(x=>{
     const mp=(Number(x.installManpower)||0)*(Number(x.installDays)||1);
     const wk=weekStart(x.installDate),r=rec(x.site);
     if(!r.weeks[wk])r.weeks[wk]={want:0,have:0,wantItems:[],haveSites:[]};
     r.weeks[wk].want+=mp;
-    r.weeks[wk].wantItems.push({product:x.product,installDate:x.installDate,manpower:Number(x.installManpower)||0,days:Number(x.installDays)||1});
+    r.weeks[wk].wantItems.push({product:x.product,installDate:x.installDate,manpower:Number(x.installManpower)||0,days:Number(x.installDays)||1,materialOnlyOutsource:!!x.materialOnlyOutsource});
   });
   // ここ（週ごとの取付人工 過不足）は「これから確保できているか」を見るための表なので、
   // 既に完了(status===3)した現場予定は表示・集計どちらからも除外する（確認済み=2のみを確保扱いにする）
@@ -1080,7 +1314,7 @@ function weeklyManpowerBySite(){
 function outsourceScheduleBySite(){
   const curWk=weekStart(td());
   const bySite={};
-  items.filter(x=>!isDone(x)&&x.type==='外注'&&x.installDate&&weekStart(x.installDate)>=curWk).forEach(x=>{
+  items.filter(x=>!isDone(x)&&x.type==='外注'&&!x.materialOnlyOutsource&&x.installDate&&weekStart(x.installDate)>=curWk).forEach(x=>{
     (bySite[x.site]=bySite[x.site]||[]).push(x);
   });
   Object.values(bySite).forEach(arr=>arr.sort((a,b)=>a.installDate.localeCompare(b.installDate)));
@@ -1106,7 +1340,7 @@ function renderManpowerWeekly(){
           const badge=short?`<span class="mp-short">⚠ あと${x.diff}人日不足</span>`:`<span class="mp-ok">確保OK</span>`;
           const reqBtn=short?`<button class="copy-btn" style="border-color:#A32D2D;color:#A32D2D;padding:1px 8px" onclick="requestInstallers('${r.site.replace(/'/g,"\\'")}','${x.wk}','${addDaysSafe(x.wk,5)}',${x.diff})" title="月〜土の期間で依頼を作成します（日曜は含みません）"><i class="ti ti-send"></i> 依頼を作成</button>`:'';
           // その週の内訳（想定＝製品、確保＝確認済の現場予定）を小さく表示する
-          const wantList=x.wantItems.map(it=>`<div style="font-size:9px;color:var(--tt)">・${fD(it.installDate)}　${it.product}　${it.manpower}人${it.days>1?`×${it.days}日`:''}</div>`).join('');
+          const wantList=x.wantItems.map(it=>`<div style="font-size:9px;color:var(--tt)">・${fD(it.installDate)}　${it.product}${it.materialOnlyOutsource?'　（製作外注）':''}　${it.manpower}人${it.days>1?`×${it.days}日`:''}</div>`).join('');
           const haveList=x.haveSites.map(hs=>`<div style="font-size:9px;color:var(--tt)">・${fD(hs.dateStart)}${hs.dateEnd&&hs.dateEnd!==hs.dateStart?`〜${fD(hs.dateEnd)}`:''}${hs.company?`　${hs.company}`:''}　${hs.count}名×${hs.days}日</div>`).join('');
           return`<div style="padding:3px 0 3px 13px">
             <div class="focus-row" style="padding:0">
@@ -1122,14 +1356,21 @@ function renderManpowerWeekly(){
     </div>`:''}
     ${outsource.length?`<div style="background:var(--bs);border-radius:var(--r-md);padding:8px 10px;margin-bottom:4px">
       <div style="font-size:10px;font-weight:600;color:var(--ts);margin-bottom:5px" title="外注分は人工計算の対象外です。取付予定日の参考表示のみ行います">🔧 外注の取付予定（人工計算なし・参考）</div>
-      ${outsource.map(r=>`
-      <div style="margin-top:4px">
+      ${outsource.map(r=>{
+        const byDate={};
+        r.list.forEach(x=>{(byDate[x.installDate]=byDate[x.installDate]||[]).push(x);});
+        const dateKeys=Object.keys(byDate).sort();
+        return`<div style="margin-top:4px">
         <div style="font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px"><span class="clr-dot" style="background:${colorForSite(r.site)}"></span>${r.site}</div>
-        ${r.list.map(x=>`<div class="focus-row" style="padding:3px 0 3px 13px">
-          <span style="font-size:11px;font-weight:500;min-width:130px;display:inline-block">${fD(x.installDate)}${(x.installDays||1)>1?`（${x.installDays}日間）`:''}</span>
-          <span style="font-size:10px;color:var(--ts)">${x.product}${x.outsourceCompany?`　${x.outsourceCompany}`:''}</span>
-        </div>`).join('')}
-      </div>`).join('')}
+        ${dateKeys.map(d=>{
+          const dItems=byDate[d];
+          return`<div style="padding:3px 0 3px 13px">
+            <span style="font-size:11px;font-weight:500">${fD(d)}</span>
+            ${dItems.map(x=>`<div style="font-size:10px;color:var(--ts);padding:1px 0 1px 8px">・${x.product}${(x.installDays||1)>1?`（${x.installDays}日間）`:''}${x.outsourceCompany?`　${x.outsourceCompany}`:''}</div>`).join('')}
+          </div>`;
+        }).join('')}
+      </div>`;
+      }).join('')}
     </div>`:''}
   `;
 }
@@ -1382,7 +1623,7 @@ const TASK_PRESETS=[{k:'asap',label:'至急'},{k:'today',label:'今日中'},{k:'
 /* ===== STORAGE ===== */
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
-function saveAll(){sv('hist',hist);sv('tasks',tasks);sv('items',items);sv('sites',sites);sv('pends',pends);sv('avails',avails);sv('nid',nid);sv('coefConfig',coefConfig);sv('manpowerCostPerDay',manpowerCostPerDay);sv('targetCostRate',targetCostRate);sv('targetMaterialMargin',targetMaterialMargin);sv('itemTemplates',itemTemplates);sv('siteNotes',siteNotes);sv('siteWorkTime',siteWorkTime);updateTabBadges();pushToCloud();}
+function saveAll(){sv('hist',hist);sv('tasks',tasks);sv('items',items);sv('sites',sites);sv('pends',pends);sv('avails',avails);sv('nid',nid);sv('coefConfig',coefConfig);sv('manpowerCostPerDay',manpowerCostPerDay);sv('targetCostRate',targetCostRate);sv('targetMaterialMargin',targetMaterialMargin);sv('itemTemplates',itemTemplates);sv('siteNotes',siteNotes);sv('siteWorkTime',siteWorkTime);sv('estSortMode',estSortMode);updateTabBadges();pushToCloud();}
 
 /* ===== 同期（Firebase Firestore・任意設定）：設定していなければ何もしない =====
    PCとiPadなど、同じFirebase設定を貼り付けた端末どうしで items/sites/tasks... をまるごと1つのFirestoreドキュメントとして共有する。
@@ -1732,11 +1973,20 @@ function renderFocus(){
   el.innerHTML=html;
 }
 
-let hist=load('hist',{sites:[],products:[],companies:[],costItems:[],targets:[]});
+let hist=load('hist',{sites:[],products:[],companies:[],costItems:[],targets:[],names:[],finishes:[]});
 /* histに新しい項目（配列）を追加した時、古い保存データやクラウド同期で丸ごと差し替わった際に
    その項目が欠けたままになるとuH()やhistモーダルがエラーで落ちる。読み込み・同期のたびに必ずここを通して補完する */
 function normalizeHist(){
-  ['sites','products','companies','costItems','targets'].forEach(k=>{if(!Array.isArray(hist[k]))hist[k]=[];});
+  ['sites','products','companies','costItems','targets','names','finishes'].forEach(k=>{if(!Array.isArray(hist[k]))hist[k]=[];});
+}
+/* 履歴は各項目とも直近10件までに絞る。既にある値は末尾（最新）に移動し、10件を超えたら古いものから削除する */
+function pushCapped(arr,val,max=10){
+  if(!val)return arr;
+  const idx=arr.indexOf(val);
+  if(idx!==-1)arr.splice(idx,1);
+  arr.push(val);
+  while(arr.length>max)arr.shift();
+  return arr;
 }
 normalizeHist();
 /* タスクの「対象」欄：名前だけ入力すれば自動で「様」を付ける（すでに様／さん／殿／御中で終わっていれば付けない） */
@@ -2141,12 +2391,24 @@ let estItemId=null,estBreakdown=[];
 // ⑥実行価格・粗利の各項目が「実際の値を入力済みか」を保持するフラグ。未入力(false)の間は①の基本原価とリアルタイムで連動させる。
 let estActualTouched={material:false,drawing:false,production:false};
 function touchEstActual(field){estActualTouched[field]=true;renderEstCalc();}
+/* 概算見積り（⚡）で入力済みの項目内訳を、簡易見積りの材料原価欄の下に参考表示する。材料原価の自由入力自体はそのまま独立して編集できる */
+function renderEstMaterialQuotesRef(x){
+  const el=document.getElementById('est-material-quotes-ref');if(!el)return;
+  const quotes=(x.materialQuotes||[]).filter(q=>q.name||q.amount);
+  if(!quotes.length){el.style.display='none';el.innerHTML='';return;}
+  const sum=quotes.reduce((s,q)=>s+(Number(q.amount)||0),0);
+  el.innerHTML=`<div style="font-weight:600;margin-bottom:2px">概算見積り（⚡）の項目内訳</div>`+
+    quotes.map(q=>`<div style="display:flex;justify-content:space-between"><span>${escH(q.name||'（項目名未入力）')}</span><span>¥${(Number(q.amount)||0).toLocaleString()}</span></div>`).join('')+
+    `<div style="display:flex;justify-content:space-between;font-weight:700;border-top:.5px solid var(--bm);margin-top:2px;padding-top:2px"><span>小計</span><span>¥${sum.toLocaleString()}</span></div>`;
+  el.style.display='block';
+}
 function openEstModal(id){
   const x=items.find(i=>i.id===id);if(!x)return;
   estItemId=id;
   estBreakdown=(x.itemBreakdown||[]).map(b=>({...b}));
   document.getElementById('est-item-label').textContent=`${x.site} / ${x.product}`;
   document.getElementById('est-material-cost').value=x.materialCost?Math.round(x.materialCost/1000*100)/100:0;
+  renderEstMaterialQuotesRef(x);
   document.getElementById('est-mp-drawing').value=x.manpowerDrawing||0;
   document.getElementById('est-mp-production').value=x.manpowerProduction||0;
   document.getElementById('est-mpcost').value=manpowerCostPerDay;
@@ -2286,6 +2548,52 @@ function renderEstCalc(){
     }
   }
 }
+/* 簡易見積りモーダルの内容をテキストでまとめる（コピペ用）。フォームに入力中の値（未保存分も含む）をそのまま反映する */
+function buildEstSummaryText(){
+  const x=items.find(i=>i.id===estItemId);
+  if(!x)return'';
+  const mpCost=Number(document.getElementById('est-mpcost').value)||manpowerCostPerDay;
+  const draft=currentEstDraft();
+  const r=calcEstimate(draft,mpCost);
+  const lines=[];
+  lines.push(`${x.site||''} ${x.product||x.estName||''}`.trim());
+  lines.push('');
+  const quotes=(x.materialQuotes||[]).filter(q=>q.name||q.amount);
+  if(quotes.length){
+    lines.push('概算見積り（⚡）の項目内訳');
+    quotes.forEach(q=>lines.push(`${q.name||'（項目名未入力）'}　¥${(Number(q.amount)||0).toLocaleString()}`));
+    const qSum=quotes.reduce((s,q)=>s+(Number(q.amount)||0),0);
+    lines.push(`材料小計　¥${qSum.toLocaleString()}`);
+    lines.push('');
+  }
+  lines.push(`作図人工 ${draft.manpowerDrawing||0}　製作人工 ${draft.manpowerProduction||0}`);
+  lines.push(`人件費　¥${r.manpowerCost.toLocaleString()}`);
+  lines.push(`原価合計　¥${r.totalCost.toLocaleString()}`);
+  lines.push('');
+  lines.push(`法定福利費　¥${r.welfare.toLocaleString()}`);
+  lines.push(`諸経費　¥${r.overhead.toLocaleString()}`);
+  (r.breakdown||[]).forEach(b=>{
+    if(b.quantity)lines.push(`${b.name?b.name+'　':''}${b.quantity}個　単価　¥${b.unitPrice.toLocaleString()}　小計　¥${b.subtotal.toLocaleString()}`);
+    else lines.push(`${b.name?b.name+'　':''}¥${b.allocated.toLocaleString()}`);
+  });
+  lines.push(`製品代　¥${r.productPrice.toLocaleString()}　製品代（運搬費控除後）　¥${r.productPriceAfterTransport.toLocaleString()}`);
+  lines.push('');
+  lines.push(`見積金額　¥${r.finalQuote.toLocaleString()}　− 実行価格　＝　${r.profitVsQuote>=0?'+':'−'}¥${Math.abs(r.profitVsQuote).toLocaleString()}`);
+  if(draft.actualQuote!==''&&r.profitVsActual!=null){
+    lines.push(`実見積り　¥${Number(draft.actualQuote).toLocaleString()}　− 実行価格　＝　${r.profitVsActual>=0?'+':'−'}¥${Math.abs(r.profitVsActual).toLocaleString()}`);
+  }
+  return lines.join('\n');
+}
+function copyEstSummary(){
+  const t=buildEstSummaryText();
+  if(!t){alert('コピーする内容がありません');return;}
+  navigator.clipboard.writeText(t).then(()=>{
+    const btn=document.getElementById('est-copy-btn');if(!btn)return;
+    const orig=btn.innerHTML;
+    btn.classList.add('ok');btn.innerHTML='<i class="ti ti-check"></i> コピー済';
+    setTimeout(()=>{btn.classList.remove('ok');btn.innerHTML=orig;},2000);
+  });
+}
 function openSiteEstModal(site){
   const siteItems=items.filter(x=>x.site===site);
   let welfare=0,overhead=0,productPrice=0,finalQuote=0,actualQuote=0,actualCount=0,executionCost=0;
@@ -2348,7 +2656,7 @@ function renderQeMaterialQuotes(){
     const amt=q.amount?Math.round(q.amount/1000*100)/100:'';
     return`
     <div class="modal-row" style="margin-bottom:2px">
-      <input value="${(q.name||'').replace(/"/g,'&quot;')}" placeholder="項目名（例：〇〇商店）" oninput="qeMaterialQuotes[${i}].name=this.value" style="flex:2">
+      <input value="${(q.name||'').replace(/"/g,'&quot;')}" placeholder="項目名（例：材料、曲げ、溶接 等）" oninput="qeMaterialQuotes[${i}].name=this.value" style="flex:2">
       <input type="number" value="${amt}" step="1" min="0" placeholder="例：12→12,000円" title="金額（千円単位）" oninput="qeMaterialQuotes[${i}].amount=(Number(this.value)||0)*1000;renderQeCalc()" style="flex:none;width:90px">
       <span style="font-size:10px;color:var(--ts)">千円</span>
       <button class="xb" onclick="qeMaterialQuotes.splice(${i},1);renderQeMaterialQuotes();renderQeCalc()" title="削除">×</button>
@@ -2445,7 +2753,7 @@ if(!items){
   ];
 }
 // 既存 items に不足フィールドを補完
-items=items.map(x=>{const s=x.itemStatus!=null?x.itemStatus:((x.installStatus===2&&(x.makeStatus===2||x.type==='外注')&&x.arrStatus===2)?5:x.installStatus===1?4:x.makeStatus===2?3:(x.makeStatus===1||x.arrStatus===1)?2:x.waitingDrawing?1:0);return{type:'自社',installStatus:0,makeStatus:x.makeStatus??0,arrStatus:x.arrStatus??0,clientDeadline:x.clientDeadline||'',orderLimit:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,inProgress:false,delivered:false,notOrdered:false,installManpower:0,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',...x,itemStatus:s};});
+items=items.map(x=>{const s=x.itemStatus!=null?x.itemStatus:((x.installStatus===2&&(x.makeStatus===2||x.type==='外注')&&x.arrStatus===2)?5:x.installStatus===1?4:x.makeStatus===2?3:(x.makeStatus===1||x.arrStatus===1)?2:x.waitingDrawing?1:0);return{type:'自社',installStatus:0,makeStatus:x.makeStatus??0,arrStatus:x.arrStatus??0,clientDeadline:x.clientDeadline||'',orderLimit:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,inProgress:false,delivered:false,notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower:0,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',isEstimate:false,estName:'',size:'',finish:'',qty:1,cornerCount:0,jointCount:0,materials:[],materialOther:'',thickness:'',steelSpecs:[],steelSpecItems:[],specNotes:[],estSymbol:'',sizeMode:'free',sizeW:0,sizeH:0,sizeD:0,sizeL:0,qtyUnit:'count',sizeCalcEnabled:false,paintItems:[],privateMemo:'',tentativeCheck:false,processing:[],paintColorBake:'',paintColorClear:'',fasteners:[],...x,itemStatus:s};});
 // ステータス「承認OK」追加（確認中と製作中の間に挿入）に伴う一回限りのマイグレーション
 if(!load('istMigV3',false)){
   items=items.map(x=>{const st=x.itemStatus??0;return st>=2?{...x,itemStatus:st+1}:x;});
@@ -2505,18 +2813,23 @@ pends=pends.map(p=>{
 const _ids=[...items,...tasks,...sites,...pends].map(x=>x.id).filter(Boolean);
 if(_ids.length)nid=Math.max(nid,..._ids.map(x=>x+1));
 
-function uH(s,p,c,ci,tg){
+function uH(s,p,c,ci,tg,nm,f){
   normalizeHist();
-  if(s&&!hist.sites.includes(s))hist.sites.push(s);
-  if(p&&!hist.products.includes(p))hist.products.push(p);
-  if(c&&!hist.companies.includes(c))hist.companies.push(c);
-  if(ci&&!hist.costItems.includes(ci))hist.costItems.push(ci);
-  if(tg&&!hist.targets.includes(tg))hist.targets.push(tg);
-  document.getElementById('dl-s').innerHTML=hist.sites.map(x=>`<option value="${x}">`).join('');
-  document.getElementById('dl-p').innerHTML=hist.products.map(x=>`<option value="${x}">`).join('');
-  document.getElementById('dl-c').innerHTML=hist.companies.map(x=>`<option value="${x}">`).join('');
-  document.getElementById('dl-ci').innerHTML=hist.costItems.map(x=>`<option value="${x}">`).join('');
-  document.getElementById('dl-t').innerHTML=hist.targets.map(x=>`<option value="${x}">`).join('');
+  pushCapped(hist.sites,s);
+  pushCapped(hist.products,p);
+  pushCapped(hist.companies,c);
+  pushCapped(hist.costItems,ci);
+  pushCapped(hist.targets,tg);
+  pushCapped(hist.names,nm);
+  pushCapped(hist.finishes,f);
+  // 新しく使ったものほど上に出るよう、表示は新しい順（末尾が最新）に並べ替える
+  document.getElementById('dl-s').innerHTML=[...hist.sites].reverse().map(x=>`<option value="${x}">`).join('');
+  document.getElementById('dl-p').innerHTML=[...hist.products].reverse().map(x=>`<option value="${x}">`).join('');
+  document.getElementById('dl-c').innerHTML=[...hist.companies].reverse().map(x=>`<option value="${x}">`).join('');
+  document.getElementById('dl-ci').innerHTML=[...hist.costItems].reverse().map(x=>`<option value="${x}">`).join('');
+  document.getElementById('dl-t').innerHTML=[...hist.targets].reverse().map(x=>`<option value="${x}">`).join('');
+  document.getElementById('dl-nm').innerHTML=[...hist.names].reverse().map(x=>`<option value="${x}">`).join('');
+  document.getElementById('dl-f').innerHTML=[...hist.finishes].reverse().map(x=>`<option value="${x}">`).join('');
 }
 uH();
 
@@ -2532,6 +2845,7 @@ function renderHistModal(){
   const sec=document.getElementById('hist-sections');
   const cats=[
     {key:'sites',label:'現場名'},
+    {key:'names',label:'名称'},
     {key:'products',label:'品名・製品名'},
     {key:'companies',label:'協力会社名'},
     {key:'costItems',label:'原価項目名'},
@@ -2561,6 +2875,11 @@ function sw(t){
   if(t==='item'&&prefillItem){
     document.getElementById('item-s').value=prefillItem.site||'';
     document.getElementById('item-pd').value=prefillItem.processDate||'';
+    const estCb=document.getElementById('item-est');
+    estCb.checked=!!prefillItem.isEst;
+    toggleEstCheckForm();
+    if(prefillItem.isEst)document.getElementById('item-est-name').value=prefillItem.estName||'';
+    document.getElementById('item-form').scrollIntoView?.({behavior:'smooth',block:'start'});
     document.getElementById('item-p').focus();prefillItem=null;
   }
   if(t==='site'&&prefillSite){
@@ -2578,6 +2897,62 @@ function sw(t){
 let prefillItem=null,prefillSite=null;
 function goToItemWithSite(site,pd=''){prefillItem={site,processDate:pd};sw('item');}
 function goToSiteWithName(site,date=''){prefillSite={site,date};sw('site');}
+function goToEstAddForSite(site){openQaEstModal(site,'');}
+function goToEstAddForGroup(site,name){openQaEstModal(site,name);}
+/* ===== 見積り項目クイック追加ポップアップ（現場名・名称の横の＋から） ===== */
+let qaEstSite=null;
+let qaEstSpecNoteRows=[''];
+function openQaEstModal(site,name){
+  qaEstSite=site;
+  document.getElementById('qa-est-site-label').textContent=site;
+  document.getElementById('qa-est-name').value=name||'';
+  document.getElementById('qa-est-product').value='';
+  document.getElementById('qa-est-size').value='';
+  document.getElementById('qa-est-finish').value='';
+  document.getElementById('qa-est-qty').value=1;
+  qaEstSpecNoteRows=[''];
+  renderQaEstSpecNoteRows();
+  document.getElementById('qa-est-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('qa-est-product').focus(),50);
+}
+function closeQaEstModal(){document.getElementById('qa-est-modal').classList.remove('show');qaEstSite=null;}
+function stepQaEstQty(delta){
+  const el=document.getElementById('qa-est-qty');
+  el.value=Math.max(1,(parseInt(el.value)||1)+delta);
+}
+function renderQaEstSpecNoteRows(){
+  document.getElementById('qa-est-spec-rows').innerHTML=qaEstSpecNoteRows.map((row,i)=>`
+    <div class="modal-row" style="margin-bottom:2px">
+      <input value="${(row||'').replace(/"/g,'&quot;')}" placeholder="例：見切りC型" oninput="qaEstSpecNoteRows[${i}]=this.value" style="flex:1">
+      <button type="button" class="xb" onclick="addQaEstSpecNoteRow(${i})" title="下に行を追加">＋</button>
+      <button type="button" class="xb" onclick="removeQaEstSpecNoteRow(${i})" title="この行を削除">×</button>
+    </div>`).join('');
+}
+function addQaEstSpecNoteRow(afterIdx){
+  const idx=(afterIdx==null||afterIdx<0)?qaEstSpecNoteRows.length:afterIdx+1;
+  qaEstSpecNoteRows.splice(idx,0,'');
+  renderQaEstSpecNoteRows();
+}
+function removeQaEstSpecNoteRow(i){
+  if(qaEstSpecNoteRows.length<=1)qaEstSpecNoteRows[i]='';
+  else qaEstSpecNoteRows.splice(i,1);
+  renderQaEstSpecNoteRows();
+}
+function submitQaEstModal(){
+  if(!qaEstSite)return;
+  const estName=document.getElementById('qa-est-name').value.trim();
+  const product=document.getElementById('qa-est-product').value.trim();
+  const size=document.getElementById('qa-est-size').value.trim();
+  const finish=document.getElementById('qa-est-finish').value.trim();
+  const qty=Math.max(1,Math.round(Number(document.getElementById('qa-est-qty').value)||1));
+  const type=document.querySelector('input[name="itype"]:checked')?.value||'自社';
+  const specNotes=qaEstSpecNoteRows.map(v=>(v||'').trim()).filter(Boolean);
+  items.push({id:nid++,type,site:qaEstSite,product,isEstimate:true,estName,size,finish,qty,estSymbol:'',sizeMode:'free',sizeW:0,sizeH:0,sizeD:0,sizeL:0,qtyUnit:'count',sizeCalcEnabled:false,paintItems:[],privateMemo:'',tentativeCheck:false,cornerCount:0,jointCount:0,materials:[],materialOther:'',thickness:'',steelSpecs:[],steelSpecItems:[],specNotes,processing:[],paintColorBake:'',paintColorClear:'',fasteners:[],processDate:'',makeDeadline:'',clientDeadline:'',orderLimit:false,desiredDate:'',asap:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,deliveredNotInstalled:false,additionalWork:false,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
+  uH(qaEstSite,product,null,null,null,estName,finish);
+  saveAll();renderItemAlert();renderItems();
+  flash('見積り項目を追加しました');
+  closeQaEstModal();
+}
 
 /* ===== 協力会社 ===== */
 function getCoGroups(statuses){
@@ -2880,6 +3255,56 @@ function delChecklistItem(taskId,idx){
 
 /* ===== 製品ステータス ===== */
 let itemCols={pd:true,memo:true,im:true};
+let itemGroupCollapsed=load('itemGroupCollapsed',{});
+/* 見積り一覧の並び替え：現状（現場名→名称でグループ）／記号（現場名グループ内を記号順にフラット表示） */
+let estSortMode=load('estSortMode','name');
+/* 記号欄：数字／アルファベット／ひらがな、どれを入力してもよい。＋－は今入っている文字の種類を自動判定して次／前に進める */
+const SYMBOL_ALPHA_SEQ=Array.from({length:26},(_,i)=>String.fromCharCode(65+i));
+const SYMBOL_KANA_SEQ=['あ','い','う','え','お','か','き','く','け','こ','さ','し','す','せ','そ','た','ち','つ','て','と','な','に','ぬ','ね','の','は','ひ','ふ','へ','ほ','ま','み','む','め','も','や','ゆ','よ','ら','り','る','れ','ろ','わ','を','ん'];
+function detectSymbolType(val){
+  if(!val)return null;
+  if(/^[0-9]+$/.test(val))return'num';
+  if(/^[A-Za-z]$/.test(val))return'alpha';
+  if(SYMBOL_KANA_SEQ.includes(val))return'kana';
+  return null;
+}
+function setEstSortMode(mode){estSortMode=mode;saveAll();renderItems();}
+function stepEstSymbol(id,delta){
+  const x=items.find(i=>i.id===id);if(!x)return;
+  const type=detectSymbolType(x.estSymbol)||'num';
+  let nv;
+  if(type==='num'){
+    let n=parseInt(x.estSymbol,10);
+    n=isNaN(n)?1:Math.max(1,n+delta);
+    nv=String(n);
+  }else{
+    const seq=type==='alpha'?SYMBOL_ALPHA_SEQ:SYMBOL_KANA_SEQ;
+    const cur=type==='alpha'?x.estSymbol.toUpperCase():x.estSymbol;
+    let idx=seq.indexOf(cur);
+    idx=idx===-1?0:Math.min(seq.length-1,Math.max(0,idx+delta));
+    nv=seq[idx];
+  }
+  items=items.map(i=>i.id===id?{...i,estSymbol:nv,updatedAt:Date.now()}:i);
+  saveAll();renderItems();
+}
+/* 記号の並び順：数字→アルファベット→ひらがな→未入力、の順でグループ化し、各グループ内は値順 */
+function estSymbolSortValue(x){
+  const v=x.estSymbol;
+  const type=detectSymbolType(v);
+  if(type==='num')return[0,parseInt(v,10)];
+  if(type==='alpha')return[1,v.toUpperCase().charCodeAt(0)];
+  if(type==='kana')return[2,SYMBOL_KANA_SEQ.indexOf(v)];
+  return[3,0];
+}
+function estSymbolSortCompare(a,b){
+  const va=estSymbolSortValue(a),vb=estSymbolSortValue(b);
+  return va[0]-vb[0]||va[1]-vb[1];
+}
+function toggleItemGroupCollapse(site){
+  itemGroupCollapsed[site]=!itemGroupCollapsed[site];
+  sv('itemGroupCollapsed',itemGroupCollapsed);
+  renderItems();
+}
 /* 現場ステータスと同様、クリック直後に一覧全体が並び替わって飛ぶと操作しづらいので、
    クリックした要素の見た目だけその場ですぐ変え、一覧の再描画（並び替え・グルーピング反映）は少し待ってから行う */
 let itemMoveTimer=null;
@@ -2987,13 +3412,29 @@ function updItemFormType(){
   document.getElementById('item-type-note').textContent=isJ?'自社：製作 → 取付 で完了':'外注：手配 → 取付 で完了';
   syncItemForm();
 }
+/* 見積りチェック：ONのときは現場名・名称・品名・サイズ・仕上げ・数量だけの簡易入力にする */
+function toggleEstCheckForm(){
+  const on=document.getElementById('item-est').checked;
+  document.getElementById('item-form-full').style.display=on?'none':'contents';
+  document.getElementById('item-form-est').style.display=on?'contents':'none';
+  document.getElementById('item-form-est-name').style.display=on?'contents':'none';
+  const pEl=document.getElementById('item-p');
+  pEl.placeholder=on?'品名（例：ブラケット・足掛け）':'品名・内容';
+  const noteEl=document.getElementById('item-type-note');
+  if(on)noteEl.textContent='見積りチェック：現場名・名称・品名・サイズ・仕上げ・数量のみ入力します';
+  else updItemFormType();
+}
+function stepEstFormQty(delta){
+  const el=document.getElementById('item-est-qty');
+  el.value=Math.max(1,(parseInt(el.value)||1)+delta);
+}
 document.querySelectorAll('input[name="itype"]').forEach(r=>r.addEventListener('change',updItemFormType));
 updItemFormType();
 document.querySelectorAll('input[name="itype"]').forEach(r=>r.addEventListener('change',syncItemForm));
 
 /* ===== 製品リミット ===== */
 let itemF='act',itemView='tbl',editItemId=null;
-function setIView(v){itemView=v;['sch','tbl'].forEach(x=>document.getElementById('iview-'+x).classList.toggle('on',x===v));renderItems();}
+function setIView(v){itemView=v;['sch','tbl','est'].forEach(x=>document.getElementById('iview-'+x).classList.toggle('on',x===v));renderItems();}
 function setIF(f){itemF=f;['all','act','ov'].forEach(x=>document.getElementById('if-'+x).classList.toggle('on',x===f));renderItems();}
 
 function warnMsgs(x){
@@ -3055,7 +3496,7 @@ function renderItemAlert(){
 
 function renderItemSchedule(){
   const el=document.getElementById('item-groups');
-  let rows=[...items].filter(x=>!isDone(x));
+  let rows=[...items].filter(x=>!isDone(x)&&!x.isEstimate);
   if(itemF==='act')rows=rows.filter(x=>!isDone(x));
   if(itemF==='ov')rows=rows.filter(x=>x.asap||itemUrgD(x)<=3);
   // 日付でグループ
@@ -3101,7 +3542,7 @@ function renderItemSchedule(){
   </div><div style="overflow-x:auto;border:.5px solid var(--bt);border-radius:6px">${out}</div>`;
 }
 function buildScheduleText(siteFilter){
-  let rows=items.filter(x=>!isDone(x));
+  let rows=items.filter(x=>!isDone(x)&&!x.isEstimate);
   if(itemF==='ov')rows=rows.filter(x=>x.asap||itemUrgD(x)<=3);
   if(siteFilter)rows=rows.filter(x=>x.site===siteFilter);
   if(!rows.length)return'';
@@ -3148,8 +3589,16 @@ function itemGroup(x){
 }
 function renderItems(){
   renderManpowerWeekly();
+  const isEstView=itemView==='est';
+  const progWrap=document.getElementById('item-progress-wrap');
+  const estWrap=document.getElementById('item-est-wrap');
+  if(progWrap)progWrap.style.display=isEstView?'none':'';
+  if(estWrap)estWrap.style.display=isEstView?'':'';
+  const estSectionEl=document.getElementById('item-est-section');
+  if(estSectionEl)estSectionEl.innerHTML=renderEstSection(items.filter(x=>x.isEstimate));
+  if(isEstView)return;
   if(itemView==='sch'){renderItemSchedule();return;}
-  let rows=[...items];
+  let rows=[...items].filter(x=>!x.isEstimate);
   if(itemF==='act')rows=rows.filter(x=>!isDone(x));
   if(itemF==='ov')rows=rows.filter(x=>!isDone(x)&&(x.asap||itemUrgD(x)<=3));
   if(!rows.length){document.getElementById('item-groups').innerHTML='<p class="nd">なし</p>';return;}
@@ -3159,8 +3608,8 @@ function renderItems(){
     if(td!==0)return td;
     const sd=(a.itemStatus??0)-(b.itemStatus??0);
     if(sd!==0)return sd;
-    const nd=(b.notOrdered?1:0)-(a.notOrdered?1:0);
-    if(nd!==0)return nd;
+    const ai=a.installDate||'9999-99-99',bi=b.installDate||'9999-99-99';
+    if(ai!==bi)return ai.localeCompare(bi);
     const ap=a.processDate||'9999-99-99',bp=b.processDate||'9999-99-99';
     return ap.localeCompare(bp);
   }));
@@ -3198,9 +3647,11 @@ function renderItems(){
       </div>
     </div>`;
     const siteWorkTimeHtml=`<label style="display:flex;align-items:center;gap:2px;font-size:10px;cursor:pointer;white-space:nowrap;color:var(--ts)"><input type="checkbox" ${wt.day?'checked':''} onchange="toggleSiteWorkTime('${siteEsc}','day')">昼</label><label style="display:flex;align-items:center;gap:2px;font-size:10px;cursor:pointer;white-space:nowrap;color:var(--ts)"><input type="checkbox" ${wt.night?'checked':''} onchange="toggleSiteWorkTime('${siteEsc}','night')">夜</label>`;
+    const collapsed=!!itemGroupCollapsed[site];
     return`<div style="margin-bottom:10px">
       <div class="ig-head">
-        <span class="ig-name"><span class="clr-dot" style="background:${colorForSite(site)}"></span>${site}</span>
+        <span class="ig-name" style="cursor:pointer" onclick="toggleItemGroupCollapse('${siteEsc}')" title="クリックで折りたたみ／展開"><span style="display:inline-block;width:10px;font-size:9px;color:var(--ts)">${collapsed?'▶':'▼'}</span><span class="clr-dot" style="background:${colorForSite(site)}"></span>${site}<span style="font-size:10px;color:var(--ts);font-weight:400;margin-left:4px">（${siteItems.length}件）</span></span>
+        <button class="pbtn sm" style="padding:2px 8px;font-weight:700" onclick="goToItemWithSite('${siteEsc}')" title="この現場に製品を追加">＋</button>
         ${siteNoteHtml}
         ${siteWorkTimeHtml}
         <button class="xb" onclick="openSiteEstModal('${site.replace(/'/g,"\\'")}')" title="現場の見積り集計">？</button>
@@ -3208,7 +3659,7 @@ function renderItems(){
         ${siteManpowerBadge(site)}
         ${pending.length?`<button class="copy-btn" id="icpbtn-${sid}" onclick="copyItemSite('${site.replace(/'/g,"\\'")}',this)"><i class="ti ti-copy"></i> 発注依頼コピー</button>`:''}
       </div>
-      <div style="overflow-x:auto;border:.5px solid var(--bt);border-radius:0 0 6px 6px">
+      <div style="overflow-x:auto;border:.5px solid var(--bt);border-radius:0 0 6px 6px;display:${collapsed?'none':'block'}">
         <table class="tbl" style="margin:0">
           <thead><tr><th>状態</th><th>品名・内容</th>${itemCols.pd?'<th>工程日</th>':''}${itemCols.memo?'<th>メモ</th>':''}${itemCols.im?'<th>取付想定・予定日</th>':''}<th></th></tr></thead>
           <tbody>${bodyRows}</tbody>
@@ -3289,7 +3740,7 @@ function renderItemRow(x){
   if(x.notOrdered)trStyle+='background:#FFF3D6;outline:1.5px solid #D9420C;outline-offset:-1.5px;';
   else if(w.length)trStyle+='background:#FFF8F5;';
   return`<tr${trStyle?` style="${trStyle}"`:''}>
-    <td><span class="bd ${ITEM_STATUS_C[st]}" onclick="cycleItemStatus(${x.id},this)" style="cursor:pointer;white-space:nowrap">${ITEM_STATUS[st]}${x.asap?' ⚡':''}</span><br><label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:2px;margin-top:3px;white-space:nowrap;font-weight:${x.notOrdered?'700':'400'};color:${x.notOrdered?'#D9420C':'var(--ts)'}"><input type="checkbox" ${x.notOrdered?'checked':''} onchange="toggleItemFlag(${x.id},'notOrdered',this)"> 未発注</label><label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:2px;margin-top:3px;white-space:nowrap;font-weight:${x.outsourceConfirming?'700':'400'};color:${x.outsourceConfirming?'#0E6E7C':'var(--ts)'}" title="工場ボード・工場用コピペにのみ反映されます"><input type="checkbox" ${x.outsourceConfirming?'checked':''} onchange="toggleItemFlag(${x.id},'outsourceConfirming',this)"> 外注確認中</label></td>
+    <td><span class="bd ${ITEM_STATUS_C[st]}" onclick="cycleItemStatus(${x.id},this)" style="cursor:pointer;white-space:nowrap">${ITEM_STATUS[st]}${x.asap?' ⚡':''}</span><br><label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:2px;margin-top:3px;white-space:nowrap;font-weight:${x.notOrdered?'700':'400'};color:${x.notOrdered?'#D9420C':'var(--ts)'}"><input type="checkbox" ${x.notOrdered?'checked':''} onchange="toggleItemFlag(${x.id},'notOrdered',this)"> 未発注</label><label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:2px;margin-top:3px;white-space:nowrap;font-weight:${x.outsourceConfirming?'700':'400'};color:${x.outsourceConfirming?'#0E6E7C':'var(--ts)'}" title="工場ボード・工場用コピペにのみ反映されます"><input type="checkbox" ${x.outsourceConfirming?'checked':''} onchange="toggleItemFlag(${x.id},'outsourceConfirming',this)"> 外注確認中</label>${x.type==='外注'?`<label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:2px;margin-top:3px;white-space:nowrap;font-weight:${x.materialOnlyOutsource?'700':'400'};color:${x.materialOnlyOutsource?'#8A5A12':'var(--ts)'}" title="材料・製作のみ外注し、取付は自社で手配する場合にチェックします。人工過不足の計算に含め、外注の取付予定からは除外します"><input type="checkbox" ${x.materialOnlyOutsource?'checked':''} onchange="toggleItemFlag(${x.id},'materialOnlyOutsource',this)"> 材のみ</label>`:''}</td>
     <td><textarea rows="${prodRows}" oninput="updItemProduct(${x.id},this.value);taGrow(this)" onfocus="this.style.borderColor='var(--bm)';this.style.background='#fff';taGrow(this)" onblur="this.style.borderColor='transparent';this.style.background='transparent';renderItems()" style="width:100%;min-width:180px;padding:2px 4px;border:.5px solid transparent;border-radius:3px;font-size:12px;background:transparent;resize:vertical;overflow:hidden;line-height:1.4;font-family:inherit">${(x.product||'').replace(/</g,'&lt;')}</textarea>${badgeHtml}${(x.createdAt||x.updatedAt)?`<div style="font-size:9px;color:var(--tt);margin-top:2px;white-space:nowrap;display:flex;align-items:center;gap:4px">${x.createdAt?`<span>追加 ${fTS(x.createdAt)}</span>`:''}${x.updatedAt?updatedAtMarkerHtml(x.updatedAt,`更新 ${fTS(x.updatedAt,true)}`):''}</div>`:''}</td>
     ${dateCellsHtml}
     ${itemCols.memo?`<td><textarea class="mi" rows="${memoRows}" oninput="updItemMemo(${x.id},this.value);taGrow(this)" onfocus="taGrow(this)" onblur="renderItems()" style="overflow:hidden">${(x.memo||'').replace(/</g,'&lt;')}</textarea></td>`:''}
@@ -3324,10 +3775,22 @@ function renderItemRow(x){
 }
 
 function addItem(){
-  const s=gv('item-s').trim(),p=gv('item-p').trim();if(!s||!p)return;
+  const isEst=document.getElementById('item-est').checked;
+  const s=gv('item-s').trim(),p=gv('item-p').trim();if(!s)return;
   const type=document.querySelector('input[name="itype"]:checked')?.value||'自社';
+  if(isEst){
+    const estName=gv('item-est-name').trim(),size=gv('item-est-size').trim(),finish=gv('item-est-finish').trim();
+    const qty=Math.max(1,Math.round(Number(gv('item-est-qty'))||1));
+    items.push({id:nid++,type,site:s,product:p,isEstimate:true,estName,size,finish,qty,estSymbol:'',sizeMode:'free',sizeW:0,sizeH:0,sizeD:0,sizeL:0,qtyUnit:'count',sizeCalcEnabled:false,paintItems:[],privateMemo:'',tentativeCheck:false,cornerCount:0,jointCount:0,materials:[],materialOther:'',thickness:'',steelSpecs:[],steelSpecItems:[],specNotes:[],processing:[],paintColorBake:'',paintColorClear:'',fasteners:[],processDate:'',makeDeadline:'',clientDeadline:'',orderLimit:false,desiredDate:'',asap:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,deliveredNotInstalled:false,additionalWork:false,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
+    uH(s,p,null,null,null,estName,finish);
+    ['item-s','item-p','item-est-name','item-est-size','item-est-finish'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('item-est-qty').value=1;
+    saveAll();renderItemAlert();renderItems();
+    return;
+  }
+  if(!p)return;
   const pd=gv('item-pd'),md=type==='自社'?(pd?(()=>{const d=new Date(pd+'T00:00:00');d.setDate(d.getDate()-14);return ymd(d)})():''):'',cl=gv('item-cl'),asap=document.getElementById('item-asap').checked,noSchedule=document.getElementById('item-nos').checked,waitingDrawing=document.getElementById('item-wd').checked,waitingCheck=document.getElementById('item-ck').checked,orderLimit=document.getElementById('item-ol').checked,deliveredNotInstalled=document.getElementById('item-dni').checked,additionalWork=document.getElementById('item-aw').checked,installManpower=Number(gv('item-im'))||0,deliveryOnly=document.getElementById('item-do').checked;
-  items.push({id:nid++,type,site:s,product:p,processDate:pd,makeDeadline:md,clientDeadline:cl,orderLimit,desiredDate:'',asap,noSchedule,waitingDrawing,waitingCheck,deliveredNotInstalled,additionalWork,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,installManpower,deliveryOnly,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
+  items.push({id:nid++,type,site:s,product:p,processDate:pd,makeDeadline:md,clientDeadline:cl,orderLimit,desiredDate:'',asap,noSchedule,waitingDrawing,waitingCheck,deliveredNotInstalled,additionalWork,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower,deliveryOnly,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
   uH(s,p,null);['item-s','item-p','item-pd','item-cl','item-im'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('item-asap').checked=false;
   document.getElementById('item-nos').checked=false;
@@ -3386,6 +3849,18 @@ function dupeItem(id){
   items.push(newItem);editItemId=newItem.id;
   saveAll();flash('複製しました（進捗は未着手にリセット）　→ 日程・内容を調整してください');renderItemAlert();renderItems();
 }
+function dupeEstItem(id){
+  const x=items.find(i=>i.id===id);if(!x)return;
+  const newItem={...x,id:nid++,product:(x.product||'')+'（コピー）',createdAt:Date.now(),updatedAt:Date.now()};
+  items.push(newItem);
+  saveAll();flash('複製しました　→ 内容を調整してください');renderItemAlert();renderItems();
+}
+function removeEstCopySuffix(id){
+  const x=items.find(i=>i.id===id);if(!x)return;
+  const newVal=(x.product||'').replace(/(?:（コピー）)+$/,'').trim();
+  updEstField(id,'product',newVal);
+  renderItems();
+}
 function dupeSite(id){
   const s=sites.find(x=>x.id===id);if(!s)return;
   const sh=d=>{if(!d)return d;const dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+7);return ymd(dt);};
@@ -3400,6 +3875,626 @@ function dupePend(id){
   saveAll();flash('複製しました');renderPends();
 }
 function delItem(id){if(!confirm('この製品を削除しますか？'))return;items=items.filter(x=>x.id!==id);saveAll();renderItemAlert();renderItems();}
+
+/* ===== 見積りチェック（簡易見積り項目） ===== */
+/* 重複入力チェック：名称・品名・サイズ・仕上げが完全一致する項目（2件以上）を、グループごとに色分けしてハイライトする */
+const EST_DUP_PALETTE=['#FFF3B0','#FFD3E0','#C8F4DE','#D3E4FF','#FFDDB3','#E6D6FF','#C9F0F0','#FFCBCB'];
+function computeEstDupColors(estItems){
+  const groups={};
+  estItems.forEach(x=>{
+    const parts=[x.estName,x.product,x.size,x.finish].map(s=>(s||'').trim());
+    if(!parts.some(Boolean))return;
+    const key=JSON.stringify(parts);
+    (groups[key]=groups[key]||[]).push(x.id);
+  });
+  const colorMap={};
+  let idx=0;
+  Object.values(groups).forEach(ids=>{
+    if(ids.length<2)return;
+    const color=EST_DUP_PALETTE[idx%EST_DUP_PALETTE.length];
+    idx++;
+    ids.forEach(id=>colorMap[id]=color);
+  });
+  return colorMap;
+}
+function renderEstSortToggle(){
+  return`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11px;color:var(--ts)">
+    並び順：
+    <button class="pbtn sm ${estSortMode==='name'?'':'off'}" style="padding:2px 10px;${estSortMode==='name'?'':'background:var(--bs);color:var(--tp);border:.5px solid var(--bm)'}" onclick="setEstSortMode('name')">名称順（現状）</button>
+    <button class="pbtn sm ${estSortMode==='symbol'?'':'off'}" style="padding:2px 10px;${estSortMode==='symbol'?'':'background:var(--bs);color:var(--tp);border:.5px solid var(--bm)'}" onclick="setEstSortMode('symbol')">記号順</button>
+  </div>`;
+}
+function renderEstSection(estItems){
+  const toggle=renderEstSortToggle();
+  if(!estItems.length)return toggle+'<p class="nd">見積りなし</p>';
+  const dupColors=computeEstDupColors(estItems);
+  const bySite={};
+  estItems.forEach(x=>{const k=x.site||'(現場名未入力)';if(!bySite[k])bySite[k]=[];bySite[k].push(x);});
+  const symbolMode=estSortMode==='symbol';
+  if(!symbolMode){
+    Object.keys(bySite).forEach(k=>bySite[k].sort((a,b)=>(a.estName||'').localeCompare(b.estName||'','ja')||(a.createdAt||0)-(b.createdAt||0)));
+  }
+  const siteOrder=Object.keys(bySite).sort((a,b)=>a.localeCompare(b,'ja'));
+  return toggle+siteOrder.map(site=>{
+    const siteItems=bySite[site];
+    const collapsed=!!itemGroupCollapsed[site];
+    const siteEsc=site.replace(/'/g,"\\'");
+    let bodyRows='';
+    if(symbolMode){
+      /* 記号ごとにグループ化し、さらにグループ内を名称でまとめて表示。個別の記号変更は詳細モーダルから行う（行上の直接入力は無し） */
+      const bySymbol={};
+      siteItems.forEach(x=>{const k=x.estSymbol||'';(bySymbol[k]=bySymbol[k]||[]).push(x);});
+      const symbolKeys=Object.keys(bySymbol).sort((ka,kb)=>{
+        const va=estSymbolSortValue({estSymbol:ka}),vb=estSymbolSortValue({estSymbol:kb});
+        return va[0]-vb[0]||va[1]-vb[1];
+      });
+      symbolKeys.forEach(symKey=>{
+        const group=bySymbol[symKey];
+        const label=symKey?escH(symKey):'未設定';
+        const byName={};
+        group.forEach(x=>{const k=x.estName||'';(byName[k]=byName[k]||[]).push(x);});
+        const nameKeys=Object.keys(byName).sort((a,b)=>a.localeCompare(b,'ja'));
+        nameKeys.forEach(nameKey=>{
+          const nameGroup=byName[nameKey];
+          nameGroup.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+          const nameEsc=nameKey.replace(/'/g,"\\'");
+          bodyRows+=`<tr><td colspan="99" style="background:var(--bs);padding:6px 8px">
+            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:var(--tp);color:#fff;font-size:16px;font-weight:800;vertical-align:middle">${label}</span>
+            <input list="dl-nm" value="${nameKey.replace(/"/g,'&quot;')}" placeholder="名称未入力" onchange="renameEstGroup('${siteEsc}','${nameEsc}',this.value)" style="font-size:11px;font-weight:600;color:var(--tp);border:.5px solid var(--bm);border-radius:3px;padding:3px 6px;background:#fff;width:160px;margin-left:8px;vertical-align:middle">
+            <span style="font-size:10px;color:var(--ts);margin-left:6px">（${nameGroup.length}件）</span>
+          </td></tr>`;
+          nameGroup.forEach(x=>{bodyRows+=renderEstRow(x,dupColors[x.id],'plain');});
+        });
+      });
+    }else{
+      let lastNameKey=null;
+      siteItems.forEach(x=>{
+        const nameKey=x.estName||'';
+        if(nameKey!==lastNameKey){
+          lastNameKey=nameKey;
+          const cnt=siteItems.filter(y=>(y.estName||'')===nameKey).length;
+          const nameEsc=nameKey.replace(/'/g,"\\'");
+          bodyRows+=`<tr><td colspan="99" style="background:var(--bs);padding:4px 6px">
+            <input list="dl-nm" value="${nameKey.replace(/"/g,'&quot;')}" placeholder="名称未入力" onchange="renameEstGroup('${siteEsc}','${nameEsc}',this.value)" style="font-size:11px;font-weight:600;color:var(--tp);border:.5px solid var(--bm);border-radius:3px;padding:3px 5px;background:#fff;width:160px">
+            <span style="font-size:10px;color:var(--ts);margin-left:4px">（${cnt}件）</span>
+            <button class="pbtn sm" style="padding:2px 8px;font-weight:700" onclick="goToEstAddForGroup('${siteEsc}','${nameEsc}')" title="この名称で見積り項目を追加">＋</button>
+          </td></tr>`;
+        }
+        bodyRows+=renderEstRow(x,dupColors[x.id],'name');
+      });
+    }
+    const theadCols=symbolMode?`<th>品名</th><th>サイズ</th><th>仕上げ</th><th>数量</th><th>施工人数×日数</th><th>規格詳細</th><th>メモ</th><th></th>`:`<th>記号</th><th>品名</th><th>サイズ</th><th>仕上げ</th><th>数量</th><th>施工人数×日数</th><th>規格詳細</th><th>メモ</th><th></th>`;
+    const totalMp=Math.round(siteItems.reduce((s,x)=>s+(Number(x.installManpower)||0)*(Number(x.installDays)||1),0)*10)/10;
+    const totalCost=Math.round(totalMp*manpowerCostPerDay);
+    const finishAgg={};
+    siteItems.forEach(x=>{
+      const area=itemAreaForFinishAgg(x);
+      if(area>0){
+        const k=x.finish||'(仕上げ未入力)';
+        finishAgg[k]=(finishAgg[k]||0)+area;
+      }
+    });
+    const finishKeys=Object.keys(finishAgg).sort((a,b)=>a.localeCompare(b,'ja'));
+    return`<div style="margin-bottom:10px">
+      <div class="ig-head">
+        <span class="ig-name" style="cursor:pointer;display:flex;align-items:center" onclick="toggleItemGroupCollapse('${siteEsc}')" title="クリックで折りたたみ／展開"><span style="display:inline-block;width:10px;font-size:9px;color:var(--ts)">${collapsed?'▶':'▼'}</span><span class="clr-dot" style="background:${colorForSite(site)}"></span>${site}<span style="font-size:10px;color:var(--ts);font-weight:400;margin-left:4px">（${siteItems.length}件）</span>${totalMp>0?`<span style="font-size:10px;color:var(--ts);font-weight:400;margin-left:8px" title="現場内の全項目の施工人数×日数の合計（1人工${manpowerCostPerDay.toLocaleString()}円で計算）">施工 ${totalMp}人工　¥${totalCost.toLocaleString()}</span>`:''}<button class="pbtn sm" style="padding:2px 8px;font-weight:700;margin-left:6px" onclick="event.stopPropagation();goToEstAddForSite('${siteEsc}')" title="この現場に見積り項目を追加">＋</button></span>
+        <button class="copy-btn" style="border-color:#0F6E56;color:#0F6E56" onclick="convertSiteEstToProgress('${siteEsc}')" title="この現場の見積りをまとめて進行中に移行"><i class="ti ti-arrow-right"></i> 現場ごと進行中へ</button>
+      </div>
+      ${finishKeys.length?`<div style="font-size:10px;color:var(--ts);padding:3px 4px 5px;display:${collapsed?'none':'block'}" title="項目ごとに塗装㎡（入力あれば優先）またはサイズ㎡（㎡を計算するチェック時）を仕上げ別に合算">仕上げ別㎡合計：${finishKeys.map(k=>`<span style="margin-right:12px"><b style="color:var(--tp)">${escH(k)}</b> ${finishAgg[k].toFixed(2)}㎡</span>`).join('')}</div>`:''}
+      <div style="overflow-x:auto;border:.5px solid var(--bt);border-radius:0 0 6px 6px;display:${collapsed?'none':'block'}">
+        <table class="tbl" style="margin:0">
+          <thead><tr>${theadCols}</tr></thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+function itemSteelSpecs(x){
+  if(Array.isArray(x.steelSpecs))return x.steelSpecs;
+  return x.steelSpec?[x.steelSpec]:[];
+}
+/* 仕上げ別㎡集計（現場ヘッダー用）：塗装詳細に入力があればそちらを優先、なければサイズ㎡計算（チェックON時）を使う */
+function itemAreaForFinishAgg(x){
+  const paintTotal=specPaintAreaTotal(x.paintItems||[]);
+  if(paintTotal>0)return paintTotal;
+  if(x.sizeCalcEnabled&&x.sizeMode&&x.sizeMode!=='free'){
+    const perUnit=specSizeAreaPerUnit(x.sizeMode,{w:x.sizeW,h:x.sizeH,d:x.sizeD,l:x.sizeL});
+    if(perUnit>0)return perUnit*(x.qty||1);
+  }
+  return 0;
+}
+function hasSpecDetail(x){
+  const hasSize=x.sizeMode&&x.sizeMode!=='free'&&specSizeAreaPerUnit(x.sizeMode,{w:x.sizeW,h:x.sizeH,d:x.sizeD,l:x.sizeL})>0;
+  return!!((x.specNotes&&x.specNotes.length)||(x.materials&&x.materials.length)||x.materialOther||x.thickness||itemSteelSpecs(x).length||(x.processing&&x.processing.length)||(x.fasteners&&x.fasteners.length)||(x.cornerCount||0)>0||(x.jointCount||0)>0||hasSize||(x.paintItems&&x.paintItems.length));
+}
+function specFromItem(x){
+  return{specNotes:x.specNotes||[],materials:x.materials||[],materialOther:x.materialOther||'',thickness:x.thickness||'',steelSpecs:itemSteelSpecs(x),processing:x.processing||[],paintColorBake:x.paintColorBake||'',paintColorClear:x.paintColorClear||'',fasteners:x.fasteners||[],cornerCount:x.cornerCount||0,jointCount:x.jointCount||0,sizeMode:x.sizeMode||'free',sizeW:x.sizeW||0,sizeH:x.sizeH||0,sizeD:x.sizeD||0,sizeL:x.sizeL||0,qty:x.qty||1,qtyUnit:x.qtyUnit||'count',sizeCalcEnabled:!!x.sizeCalcEnabled,paintItems:x.paintItems||[]};
+}
+/* 見積り項目の進捗色：白=未着手／青=仮チェック／オレンジ=概算入力途中／緑=見積り金額入力済み（優先度：緑＞オレンジ＞青＞白） */
+const EST_STATUS_COLORS={white:'#fff',blue:'#DCEEFF',orange:'#FFE8CC',green:'#DFF5E1'};
+function estRowStatus(x){
+  const hasActual=x.actualQuote!=null&&x.actualQuote!==''&&Number(x.actualQuote)>0;
+  if(hasActual)return'green';
+  const inProgress=((x.materialQuotes||[]).length>0)||(Number(x.materialCost)||0)>0||(Number(x.manpowerDrawing)||0)>0||(Number(x.manpowerProduction)||0)>0;
+  if(inProgress)return'orange';
+  if(x.tentativeCheck)return'blue';
+  return'white';
+}
+function toggleEstTentativeCheck(id){
+  items=items.map(x=>x.id===id?{...x,tentativeCheck:!x.tentativeCheck,updatedAt:Date.now()}:x);
+  saveAll();renderItems();
+}
+function renderEstRow(x,dupColor,mode){
+  const esc=v=>(v??'').toString().replace(/"/g,'&quot;');
+  const specText=hasSpecDetail(x)?buildSpecSummary(specFromItem(x)):'';
+  const cpBtns=field=>`<button class="xb" onclick="copyEstFieldValue(${x.id},'${field}')" title="コピー"><i class="ti ti-copy"></i></button><button class="xb" onclick="pasteEstFieldValue(${x.id},'${field}')" title="貼り付け"><i class="ti ti-clipboard"></i></button>`;
+  const dupBadge=dupColor?`<span style="font-size:9px;font-weight:700;color:#7A5B00;background:${dupColor};border-radius:3px;padding:1px 5px;margin-left:4px;white-space:nowrap" title="名称・品名・サイズ・仕上げが完全一致する項目が他にもあります">⚠ 重複</span>`:'';
+  const status=estRowStatus(x);
+  const statusColor=EST_STATUS_COLORS[status];
+  const statusTitle={white:'未着手',blue:'仮チェック済み',orange:'概算入力途中',green:'見積り金額入力済み'}[status];
+  /* 'name'=通常一覧（行に記号の直接入力あり／名称列なし）　'plain'=記号順（記号・名称ともに見出しでまとめ済みなので行には出さない） */
+  const symbolCol=mode==='name'?`<td style="white-space:nowrap;text-align:center">
+      <button class="xb" onclick="stepEstSymbol(${x.id},-1)">−</button>
+      <input value="${esc(x.estSymbol)}" onchange="updEstField(${x.id},'estSymbol',this.value)" placeholder="記号" style="width:32px;padding:4px 2px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;text-align:center;font-weight:700;background:#fff">
+      <button class="xb" onclick="stepEstSymbol(${x.id},1)">＋</button>
+    </td>`:'';
+  const nameCol='';
+  const rowBg=dupColor||(status!=='white'?statusColor:'');
+  return`<tr${rowBg?` style="background:${rowBg}"`:''}>
+    ${symbolCol}
+    ${nameCol}
+    <td><div style="display:flex;align-items:center;gap:1px"><button class="xb" onclick="toggleEstTentativeCheck(${x.id})" title="仮チェック（クリックで切り替え）：${statusTitle}">${x.tentativeCheck?'☑':'☐'}</button><input list="dl-p" value="${esc(x.product)}" onchange="updEstField(${x.id},'product',this.value)" style="width:100px;padding:4px 5px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;background:#fff">${cpBtns('product')}${(x.product||'').includes('（コピー）')?`<button class="xb" style="color:#D9420C;border-color:#D9420C" onclick="removeEstCopySuffix(${x.id})" title="「（コピー）」を削除">×</button>`:''}${dupBadge}</div></td>
+    <td><div style="display:flex;align-items:center;gap:1px"><input value="${esc(x.size)}" onchange="updEstField(${x.id},'size',this.value)" style="width:150px;padding:4px 5px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;background:#fff">${cpBtns('size')}</div></td>
+    <td><div style="display:flex;align-items:center;gap:1px"><input list="dl-f" value="${esc(x.finish)}" onchange="updEstField(${x.id},'finish',this.value)" style="width:120px;padding:4px 5px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;background:#fff">${cpBtns('finish')}</div></td>
+    <td style="white-space:nowrap;text-align:center">
+      <input type="number" min="1" value="${x.qty||1}" onchange="updEstField(${x.id},'qty',this.value)" style="width:42px;padding:4px 2px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;text-align:center">
+    </td>
+    <td style="white-space:nowrap;text-align:center">
+      <input type="number" step="0.5" min="0" value="${x.installManpower||''}" placeholder="0" onchange="updItemManpower(${x.id},this.value)" style="width:38px;padding:4px 2px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;text-align:center" title="施工想定人数（0.5人単位）">
+      <span style="font-size:10px;color:var(--ts)">人×</span>
+      <input type="number" step="1" min="1" value="${x.installDays||1}" onchange="updItemDays(${x.id},this.value)" style="width:28px;padding:4px 2px;border:.5px solid var(--bt);border-radius:3px;font-size:11px;text-align:center" title="施工日数">
+      <span style="font-size:10px;color:var(--ts)">日</span>
+    </td>
+    <td style="max-width:220px">
+      <button class="xb" onclick="openEstSpecModal(${x.id})" title="材質・加工・留め方などの詳細">${specText?'詳細 ✓':'詳細'}</button>
+      ${specText?`<div style="margin-top:3px;font-size:10px;color:var(--ts);line-height:1.4">${escH(specText)}</div>`:''}
+    </td>
+    <td style="min-width:140px">
+      <textarea class="mi" rows="${Math.min(4,Math.max(1,Math.ceil((x.privateMemo||'').length/20)))}" placeholder="メモ（自分用・他には表示されません）" oninput="updEstMemo(${x.id},this.value);taGrow(this)" onfocus="taGrow(this)" style="overflow:hidden">${escH(x.privateMemo||'')}</textarea>
+    </td>
+    <td style="white-space:nowrap"><button class="xb" onclick="openEstModal(${x.id})" title="簡易見積り">¥</button> <button class="xb" onclick="openQuickEstModal(${x.id})" title="概算見積り（簡易）">⚡</button> <button class="xb" onclick="dupeEstItem(${x.id})" title="複製（品名に「（コピー）」を付けて追加）">⧉</button> <button class="xb" onclick="delItem(${x.id})">×</button></td>
+  </tr>`;
+}
+function updEstField(id,field,v){
+  items=items.map(x=>{
+    if(x.id!==id)return x;
+    if(field==='qty')return{...x,qty:Math.max(1,Math.round(Number(v)||1)),updatedAt:Date.now()};
+    return{...x,[field]:v,updatedAt:Date.now()};
+  });
+  if(field==='site')uH(v,null,null,null,null,null);
+  else if(field==='product')uH(null,v,null,null,null,null);
+  else if(field==='estName')uH(null,null,null,null,null,v);
+  else if(field==='finish')uH(null,null,null,null,null,null,v);
+  saveAll();
+}
+/* 見積り項目ごとの私用メモ（自分の確認用のみ・規格詳細サマリーや発注依頼などの他の出力には一切含めない） */
+function updEstMemo(id,v){
+  items=items.map(x=>x.id===id?{...x,privateMemo:v,updatedAt:Date.now()}:x);
+  saveAll();
+}
+/* 品名・サイズ・仕上げなどを1ボタンでコピー／貼り付け（アプリ内の一時クリップボード。行をまたいで使い回せます） */
+let estFieldClipboard='';
+function copyEstFieldValue(id,field){
+  const x=items.find(i=>i.id===id);if(!x)return;
+  estFieldClipboard=x[field]||'';
+  flash(estFieldClipboard?'コピーしました':'空欄をコピーしました');
+}
+function pasteEstFieldValue(id,field){
+  if(!estFieldClipboard){flash('コピーされた内容がありません');return;}
+  updEstField(id,field,estFieldClipboard);
+  renderItems();
+}
+function stepEstQty(id,delta){
+  items=items.map(x=>x.id===id?{...x,qty:Math.max(1,(Number(x.qty)||1)+delta),updatedAt:Date.now()}:x);
+  saveAll();renderItems();
+}
+/* 名称の見出し行から、その現場・名称グループの全項目をまとめて改名する */
+function renameEstGroup(site,oldName,newName){
+  const nm=(newName||'').trim();
+  items=items.map(x=>{
+    if(!(x.isEstimate&&x.site===site&&(x.estName||'')===oldName))return x;
+    return{...x,estName:nm,updatedAt:Date.now()};
+  });
+  uH(null,null,null,null,null,nm);
+  saveAll();renderItems();
+}
+/* ===== 仕様詳細（現場名〜留め方まで一括編集）モーダル ===== */
+let estSpecItemId=null;
+let specSteelRows=[{text:'',st:false,sus:false}];
+let specNoteRows=[''];
+let specPaintRows=[{name:'',w:'',h:'',qty:'1'}];
+function openEstSpecModal(id){
+  const x=items.find(i=>i.id===id);if(!x)return;
+  estSpecItemId=id;
+  document.getElementById('spec-item-label').textContent=`${x.site||''} / ${x.product||x.estName||''}`;
+  document.getElementById('spec-site').value=x.site||'';
+  document.getElementById('spec-symbol').value=x.estSymbol||'';
+  document.getElementById('spec-name').value=x.estName||'';
+  document.getElementById('spec-product').value=x.product||'';
+  document.getElementById('spec-size').value=x.size||'';
+  document.getElementById('spec-w-wh').value=x.sizeW||'';
+  document.getElementById('spec-w-whd').value=x.sizeW||'';
+  document.getElementById('spec-w-dw').value=x.sizeW||'';
+  document.getElementById('spec-h-wh').value=x.sizeH||'';
+  document.getElementById('spec-h-whd').value=x.sizeH||'';
+  document.getElementById('spec-h-dhl').value=x.sizeH||'';
+  document.getElementById('spec-h-dh').value=x.sizeH||'';
+  document.getElementById('spec-d-whd').value=x.sizeD||'';
+  document.getElementById('spec-d-dhl').value=x.sizeD||'';
+  document.getElementById('spec-d-dh').value=x.sizeD||'';
+  document.getElementById('spec-d-dw').value=x.sizeD||'';
+  document.getElementById('spec-l-dhl').value=x.sizeL||'';
+  document.getElementById('spec-finish').value=x.finish||'';
+  specNoteRows=(x.specNotes&&x.specNotes.length)?[...x.specNotes]:[''];
+  renderSpecNoteRows();
+  document.getElementById('spec-qty').value=x.qty||1;
+  document.getElementById('spec-size-calc-enabled').checked=!!x.sizeCalcEnabled;
+  setSpecSizeMode(x.sizeMode||'free');
+  setSpecQtyUnit(x.qtyUnit||(x.sizeMode==='dh'||x.sizeMode==='dw'?'length':'count'));
+  document.getElementById('spec-corner').value=x.cornerCount||0;
+  document.getElementById('spec-joint').value=x.jointCount||0;
+  document.querySelectorAll('.spec-material-cb').forEach(cb=>cb.checked=(x.materials||[]).includes(cb.value));
+  document.getElementById('spec-material-other').value=x.materialOther||'';
+  document.getElementById('spec-thickness').value=(x.thickness||'').replace(/\s*t$/i,'');
+  specSteelRows=itemSteelSpecRows(x);
+  renderSpecSteelRows();
+  specPaintRows=(x.paintItems&&x.paintItems.length)?x.paintItems.map(r=>({...r})):[{name:'',w:'',h:'',qty:'1'}];
+  renderSpecPaintRows();
+  document.querySelectorAll('.spec-proc-cb').forEach(cb=>cb.checked=(x.processing||[]).includes(cb.value));
+  document.getElementById('spec-bake-color').value=x.paintColorBake||'';
+  document.getElementById('spec-clear-color').value=x.paintColorClear||'';
+  document.querySelectorAll('.spec-fastener-cb').forEach(cb=>cb.checked=(x.fasteners||[]).includes(cb.value));
+  syncSpecPaintColors();
+  document.getElementById('est-spec-modal').classList.add('show');
+}
+function closeEstSpecModal(){document.getElementById('est-spec-modal').classList.remove('show');estSpecItemId=null;}
+function stepSpecQty(delta){
+  const el=document.getElementById('spec-qty');
+  const unitEl=document.getElementById('spec-qty-unit');
+  const isLen=unitEl?unitEl.value==='length':false;
+  const step=isLen?0.1:1;
+  const min=isLen?0:1;
+  const cur=parseSizeVal(el.value)||(isLen?0:1);
+  let v=cur+delta*step;
+  v=Math.max(min,Math.round(v*10)/10);
+  el.value=isLen?v.toFixed(1):String(Math.round(v));
+  renderSpecSizeCalc();
+}
+/* ===== サイズ入力：自由入力／WHD／DHL／DH+延べ／DW+延べ の切り替えと㎡計算 ===== */
+function setSpecSizeMode(mode){
+  document.getElementById('spec-size-mode').value=mode;
+  ['free','wh','whd','dhl','dh','dw'].forEach(m=>{
+    const el=document.getElementById('spec-size-'+m);
+    if(el)el.style.display=(m===mode)?(m==='free'?'block':'flex'):'none';
+  });
+  document.querySelectorAll('.spec-size-mode-btn').forEach(b=>{
+    const on=b.dataset.mode===mode;
+    b.style.background=on?'var(--tp)':'';
+    b.style.color=on?'#fff':'';
+  });
+  setSpecQtyUnit(mode==='dh'||mode==='dw'?'length':'count');
+}
+/* 数量欄の単位（個数／延べ長さm）はトグルボタンで明示的に切り替える。サイズ形式（DH+延べ等）を選んだ時は既定として自動でlengthにするが、その後いつでもトグルで上書きできる */
+function setSpecQtyUnit(unit){
+  document.getElementById('spec-qty-unit').value=unit;
+  const qtyLabel=document.getElementById('spec-qty-label');
+  const qtyEl=document.getElementById('spec-qty');
+  if(unit==='length'){
+    qtyLabel.textContent='延べ長さ(m)';
+    qtyEl.step='0.1';
+    qtyEl.min='0';
+  }else{
+    qtyLabel.textContent='数量';
+    qtyEl.step='1';
+    qtyEl.min='1';
+    if((parseSizeVal(qtyEl.value)||0)<1)qtyEl.value=1;
+  }
+  document.querySelectorAll('.spec-qty-unit-btn').forEach(b=>{
+    const on=b.dataset.unit===unit;
+    b.style.background=on?'var(--tp)':'';
+    b.style.color=on?'#fff':'';
+  });
+  renderSpecSizeCalc();
+}
+/* 寸法欄は「1120+2140」のように＋区切りで複数区間の合計を入力できる。㎡計算では＋を先に合計してから面積を出す */
+function parseSizeVal(str){
+  if(str==null)return 0;
+  const s=String(str).trim();
+  if(!s)return 0;
+  return s.split('+').reduce((sum,part)=>{
+    const n=parseFloat(part.trim());
+    return sum+(isNaN(n)?0:n);
+  },0);
+}
+function specSizeVals(mode){
+  const gv=id=>{const el=document.getElementById(id);return el?(el.value||'').trim():'';};
+  if(mode==='wh')return{w:gv('spec-w-wh'),h:gv('spec-h-wh')};
+  if(mode==='whd')return{w:gv('spec-w-whd'),h:gv('spec-h-whd'),d:gv('spec-d-whd')};
+  if(mode==='dhl')return{d:gv('spec-d-dhl'),h:gv('spec-h-dhl'),l:gv('spec-l-dhl')};
+  if(mode==='dh')return{d:gv('spec-d-dh'),h:gv('spec-h-dh')};
+  if(mode==='dw')return{d:gv('spec-d-dw'),w:gv('spec-w-dw')};
+  return{};
+}
+function specSizeAreaPerUnit(mode,v){
+  v=v||{};
+  const w=parseSizeVal(v.w),h=parseSizeVal(v.h),d=parseSizeVal(v.d),l=parseSizeVal(v.l);
+  if(mode==='wh')return(w*h)/1e6;
+  if(mode==='whd')return(w*h)/1e6;
+  if(mode==='dhl')return(d*l)/1e6;
+  if(mode==='dh')return(d*h)/1e6;
+  if(mode==='dw')return(d*w)/1e6;
+  return 0;
+}
+/* 一覧のサイズ表記用：足し算入力は括弧でまとめて表示。2項なら（A+B）そのまま、3項以上は見やすさ優先で合計値を（合計）として表示 */
+function formatSizeDimForDisplay(raw){
+  const s=(raw==null?'':String(raw)).trim();
+  if(!s)return s;
+  const parts=s.split('+').map(p=>p.trim()).filter(Boolean);
+  if(parts.length<=1)return s;
+  if(parts.length===2)return`（${parts.join('+')}）`;
+  const sum=parts.reduce((a,p)=>{const n=parseFloat(p);return a+(isNaN(n)?0:n);},0);
+  return`（計${sum}）`;
+}
+function buildSizeStringFromMode(mode,v){
+  v=v||{};
+  const w=formatSizeDimForDisplay(v.w),h=formatSizeDimForDisplay(v.h),d=formatSizeDimForDisplay(v.d),l=formatSizeDimForDisplay(v.l);
+  if(mode==='wh')return`W${w}×H${h}`;
+  if(mode==='whd')return`W${w}×H${h}×D${d}`;
+  if(mode==='dhl')return`D${d}×H${h}×L${l}`;
+  if(mode==='dh')return`D${d}×H${h}（延べ）`;
+  if(mode==='dw')return`D${d}×W${w}（延べ）`;
+  return'';
+}
+function renderSpecSizeCalc(){
+  const modeEl=document.getElementById('spec-size-mode');
+  if(!modeEl)return;
+  const mode=modeEl.value;
+  const calcEl=document.getElementById('spec-size-calc');
+  const calcEnabled=document.getElementById('spec-size-calc-enabled')?.checked;
+  if(mode==='free'||!calcEnabled){if(calcEl)calcEl.textContent='';renderSpecPreview();return;}
+  const v=specSizeVals(mode);
+  const perUnit=specSizeAreaPerUnit(mode,v);
+  const qty=Math.max(0,parseSizeVal(document.getElementById('spec-qty').value)||0);
+  const total=perUnit*qty;
+  const qtyUnitEl=document.getElementById('spec-qty-unit');
+  const isLen=qtyUnitEl?qtyUnitEl.value==='length':(mode==='dh'||mode==='dw');
+  const unitLabel=isLen?'㎡/m':'㎡/個';
+  if(calcEl)calcEl.textContent=perUnit>0?`単位あたり ${perUnit.toFixed(2)}${unitLabel}　合計 ${total.toFixed(2)}㎡`:'';
+  renderSpecPreview();
+}
+function stepSpecSymbol(delta){
+  const el=document.getElementById('spec-symbol');
+  const cur=el.value.trim();
+  const type=detectSymbolType(cur)||'num';
+  let nv;
+  if(type==='num'){
+    let n=parseInt(cur,10);
+    n=isNaN(n)?1:Math.max(1,n+delta);
+    nv=String(n);
+  }else{
+    const seq=type==='alpha'?SYMBOL_ALPHA_SEQ:SYMBOL_KANA_SEQ;
+    const c=type==='alpha'?cur.toUpperCase():cur;
+    let idx=seq.indexOf(c);
+    idx=idx===-1?0:Math.min(seq.length-1,Math.max(0,idx+delta));
+    nv=seq[idx];
+  }
+  el.value=nv;
+  renderSpecPreview();
+}
+function syncSpecPaintColors(){
+  const bake=document.getElementById('spec-proc-bake').checked;
+  const clear=document.getElementById('spec-proc-clear').checked;
+  document.getElementById('spec-bake-color-row').style.display=bake?'flex':'none';
+  document.getElementById('spec-clear-color-row').style.display=clear?'flex':'none';
+  renderSpecPreview();
+}
+function renderSpecSteelRows(){
+  document.getElementById('spec-steel-rows').innerHTML=specSteelRows.map((row,i)=>`
+    <div class="modal-row" style="margin-bottom:2px;gap:4px">
+      <label style="display:flex;align-items:center;gap:2px;font-size:11px;font-weight:400;flex:none;white-space:nowrap"><input type="checkbox" ${row.st?'checked':''} style="width:auto;flex:none;padding:0" onchange="specSteelRows[${i}].st=this.checked;renderSpecPreview()"> ST</label>
+      <label style="display:flex;align-items:center;gap:2px;font-size:11px;font-weight:400;flex:none;white-space:nowrap"><input type="checkbox" ${row.sus?'checked':''} style="width:auto;flex:none;padding:0" onchange="specSteelRows[${i}].sus=this.checked;renderSpecPreview()"> SUS</label>
+      <input value="${(row.text||'').replace(/"/g,'&quot;')}" placeholder="例：L-25X25X1.5t" oninput="specSteelRows[${i}].text=this.value;renderSpecPreview()" style="flex:1;min-width:0">
+      <button type="button" class="xb" onclick="addSpecSteelRow(${i})" title="下に行を追加">＋</button>
+      <button type="button" class="xb" onclick="removeSpecSteelRow(${i})" title="この行を削除">×</button>
+    </div>`).join('');
+}
+function addSpecSteelRow(afterIdx){
+  const idx=(afterIdx==null||afterIdx<0)?specSteelRows.length:afterIdx+1;
+  specSteelRows.splice(idx,0,{text:'',st:false,sus:false});
+  renderSpecSteelRows();
+}
+function removeSpecSteelRow(i){
+  if(specSteelRows.length<=1)specSteelRows[i]={text:'',st:false,sus:false};
+  else specSteelRows.splice(i,1);
+  renderSpecSteelRows();renderSpecPreview();
+}
+/* 鋼材行のST/SUSチェックから表示テキストを組み立てる（保存時のsteelSpecsは従来通りプレーン文字列配列のまま・先頭にST／SUS／ST・SUSを付与） */
+function buildSteelRowText(r){
+  const t=(r.text||'').trim();
+  if(!t)return'';
+  const prefix=[r.st?'ST':'',r.sus?'SUS':''].filter(Boolean).join('・');
+  return prefix?`${prefix} ${t}`:t;
+}
+/* モーダル編集用：steelSpecItems（新・構造化データ）があればそれを使い、無ければ従来のsteelSpecs（プレーン文字列）をst/susなしの行に変換して表示する */
+function itemSteelSpecRows(x){
+  if(Array.isArray(x.steelSpecItems)&&x.steelSpecItems.length)return x.steelSpecItems.map(r=>({text:r.text||'',st:!!r.st,sus:!!r.sus}));
+  const legacy=itemSteelSpecs(x);
+  return legacy.length?legacy.map(t=>({text:t,st:false,sus:false})):[{text:'',st:false,sus:false}];
+}
+/* 塗装詳細：項目名＋W×H×数量の複数行。WH欄は＋区切りの足し算に対応（parseSizeValで合計してから面積計算）。
+   一覧・プレビューには全行の合計㎡を優先表示する（他のサイズ㎡計算欄とは独立） */
+function specRowArea(r){
+  r=r||{};
+  return((parseSizeVal(r.w)*parseSizeVal(r.h))/1e6)*(parseSizeVal(r.qty)||1);
+}
+function specPaintAreaTotal(rows){
+  return(rows||[]).reduce((s,r)=>s+specRowArea(r),0);
+}
+function renderSpecPaintRows(){
+  document.getElementById('spec-paint-rows').innerHTML=specPaintRows.map((r,i)=>`
+    <div style="display:flex;gap:3px;align-items:center;margin-bottom:3px;flex-wrap:wrap">
+      <input value="${(r.name||'').replace(/"/g,'&quot;')}" placeholder="項目名（例：天板）" style="width:90px" oninput="specPaintRows[${i}].name=this.value;renderSpecPreview()">
+      W<input type="text" inputmode="decimal" value="${(r.w||'').replace(/"/g,'&quot;')}" placeholder="例：1120+2140" style="width:80px" oninput="specPaintRows[${i}].w=this.value;updateSpecPaintCalc()">
+      ×H<input type="text" inputmode="decimal" value="${(r.h||'').replace(/"/g,'&quot;')}" placeholder="例：1120+2140" style="width:80px" oninput="specPaintRows[${i}].h=this.value;updateSpecPaintCalc()">
+      ×<input type="text" inputmode="decimal" value="${(r.qty||'').replace(/"/g,'&quot;')}" placeholder="数量" style="width:40px;text-align:center" oninput="specPaintRows[${i}].qty=this.value;updateSpecPaintCalc()">
+      <span id="spec-paint-area-${i}" style="font-size:10px;color:var(--ts);min-width:50px"></span>
+      <button type="button" class="xb" onclick="addSpecPaintRow(${i})" title="下に行を追加">＋</button>
+      <button type="button" class="xb" onclick="removeSpecPaintRow(${i})" title="この行を削除">×</button>
+    </div>`).join('')+`<div id="spec-paint-total" style="font-size:11px;font-weight:700;color:var(--tp);margin-top:2px"></div>`;
+  updateSpecPaintCalc();
+}
+function updateSpecPaintCalc(){
+  specPaintRows.forEach((r,i)=>{
+    const el=document.getElementById('spec-paint-area-'+i);
+    if(el){const a=specRowArea(r);el.textContent=a>0?a.toFixed(2)+'㎡':'';}
+  });
+  const totalEl=document.getElementById('spec-paint-total');
+  if(totalEl){const total=specPaintAreaTotal(specPaintRows);totalEl.textContent=total>0?`塗装合計 ${total.toFixed(2)}㎡`:'';}
+  renderSpecPreview();
+}
+function addSpecPaintRow(afterIdx){
+  const idx=(afterIdx==null||afterIdx<0)?specPaintRows.length:afterIdx+1;
+  const src=(afterIdx!=null&&afterIdx>=0)?specPaintRows[afterIdx]:null;
+  const newRow=src?{name:src.name||'',w:src.w||'',h:src.h||'',qty:src.qty||'1'}:{name:'',w:'',h:'',qty:'1'};
+  specPaintRows.splice(idx,0,newRow);
+  renderSpecPaintRows();
+}
+function removeSpecPaintRow(i){
+  if(specPaintRows.length<=1)specPaintRows[i]={name:'',w:'',h:'',qty:'1'};
+  else specPaintRows.splice(i,1);
+  renderSpecPaintRows();
+}
+function renderSpecNoteRows(){
+  document.getElementById('spec-note-rows').innerHTML=specNoteRows.map((row,i)=>`
+    <div class="modal-row" style="margin-bottom:2px">
+      <input value="${(row||'').replace(/"/g,'&quot;')}" placeholder="例：見切りC型" oninput="specNoteRows[${i}]=this.value;renderSpecPreview()" style="flex:1">
+      <button type="button" class="xb" onclick="addSpecNoteRow(${i})" title="下に行を追加">＋</button>
+      <button type="button" class="xb" onclick="removeSpecNoteRow(${i})" title="この行を削除">×</button>
+    </div>`).join('');
+}
+function addSpecNoteRow(afterIdx){
+  const idx=(afterIdx==null||afterIdx<0)?specNoteRows.length:afterIdx+1;
+  specNoteRows.splice(idx,0,'');
+  renderSpecNoteRows();
+}
+function removeSpecNoteRow(i){
+  if(specNoteRows.length<=1)specNoteRows[i]='';
+  else specNoteRows.splice(i,1);
+  renderSpecNoteRows();renderSpecPreview();
+}
+function collectSpecFromForm(){
+  const sizeMode=document.getElementById('spec-size-mode').value;
+  const sv=specSizeVals(sizeMode);
+  const qtyUnitEl=document.getElementById('spec-qty-unit');
+  const qtyUnit=qtyUnitEl?qtyUnitEl.value:'count';
+  const isLenMode=qtyUnit==='length';
+  const rawQty=parseSizeVal(document.getElementById('spec-qty').value)||0;
+  const qty=isLenMode?Math.max(0,Math.round(rawQty*10)/10):Math.max(1,Math.round(rawQty||1));
+  return{
+    qtyUnit,
+    sizeCalcEnabled:!!document.getElementById('spec-size-calc-enabled')?.checked,
+    site:document.getElementById('spec-site').value.trim(),
+    estSymbol:document.getElementById('spec-symbol').value.trim(),
+    estName:document.getElementById('spec-name').value.trim(),
+    product:document.getElementById('spec-product').value.trim(),
+    size:sizeMode==='free'?document.getElementById('spec-size').value.trim():buildSizeStringFromMode(sizeMode,sv),
+    sizeMode,
+    sizeW:sv.w||0,sizeH:sv.h||0,sizeD:sv.d||0,sizeL:sv.l||0,
+    finish:document.getElementById('spec-finish').value.trim(),
+    specNotes:specNoteRows.map(s=>(s||'').trim()).filter(Boolean),
+    qty,
+    cornerCount:Math.max(0,Math.round(parseSizeVal(document.getElementById('spec-corner').value)||0)),
+    jointCount:Math.max(0,Math.round(parseSizeVal(document.getElementById('spec-joint').value)||0)),
+    materials:[...document.querySelectorAll('.spec-material-cb')].filter(cb=>cb.checked).map(cb=>cb.value),
+    materialOther:document.getElementById('spec-material-other').value.trim(),
+    thickness:(()=>{const raw=document.getElementById('spec-thickness').value.trim();return raw?(/t$/i.test(raw)?raw:raw+'t'):'';})(),
+    steelSpecs:specSteelRows.map(r=>buildSteelRowText(r)).filter(Boolean),
+    steelSpecItems:specSteelRows.filter(r=>(r.text||'').trim()).map(r=>({text:r.text.trim(),st:!!r.st,sus:!!r.sus})),
+    processing:[...document.querySelectorAll('.spec-proc-cb')].filter(cb=>cb.checked).map(cb=>cb.value),
+    paintColorBake:document.getElementById('spec-proc-bake').checked?document.getElementById('spec-bake-color').value.trim():'',
+    paintColorClear:document.getElementById('spec-proc-clear').checked?document.getElementById('spec-clear-color').value.trim():'',
+    fasteners:[...document.querySelectorAll('.spec-fastener-cb')].filter(cb=>cb.checked).map(cb=>cb.value),
+    paintItems:specPaintRows.map(r=>({name:(r.name||'').trim(),w:r.w||'',h:r.h||'',qty:r.qty||''})).filter(r=>r.name||parseSizeVal(r.w)||parseSizeVal(r.h))
+  };
+}
+function buildSpecSummary(spec){
+  const parts=[];
+  const paintTotal=specPaintAreaTotal(spec.paintItems||[]);
+  if(paintTotal>0)parts.push(`塗装計 ${paintTotal.toFixed(2)}㎡`);
+  if(spec.sizeCalcEnabled&&spec.sizeMode&&spec.sizeMode!=='free'){
+    const perUnit=specSizeAreaPerUnit(spec.sizeMode,{w:spec.sizeW,h:spec.sizeH,d:spec.sizeD,l:spec.sizeL});
+    if(perUnit>0){
+      const total=perUnit*(spec.qty||1);
+      const unitLabel=spec.qtyUnit==='length'?'㎡/m':'㎡/個';
+      parts.push(`${perUnit.toFixed(2)}${unitLabel}×${spec.qty||1}＝${total.toFixed(2)}㎡`);
+    }
+  }
+  if((spec.specNotes||[]).length)parts.push(spec.specNotes.join('、'));
+  const matList=[...(spec.materials||[])];
+  if(spec.materialOther)matList.push(spec.materialOther);
+  if(matList.length||spec.thickness)parts.push(`${matList.join('・')}${spec.thickness?' '+spec.thickness:''}`.trim());
+  if((spec.steelSpecs||[]).length)parts.push(spec.steelSpecs.join('、'));
+  const procList=(spec.processing||[]).map(p=>{
+    if(p==='焼付塗装')return`焼付塗装${spec.paintColorBake?'（'+spec.paintColorBake+'）':'（色未決）'}`;
+    if(p==='クリア塗装')return`クリア塗装${spec.paintColorClear?'（'+spec.paintColorClear+'）':'（色未決）'}`;
+    return p;
+  });
+  if(procList.length)parts.push(procList.join('・'));
+  if((spec.fasteners||[]).length)parts.push(spec.fasteners.join('・')+'固定');
+  if((spec.cornerCount||0)>0)parts.push(`コーナー${spec.cornerCount}ヶ所`);
+  if((spec.jointCount||0)>0)parts.push(`ジョイント${spec.jointCount}ヶ所`);
+  return parts.length?parts.join('／'):'';
+}
+function renderSpecPreview(){
+  const t=buildSpecSummary(collectSpecFromForm());
+  document.getElementById('spec-preview').textContent=t||'（未入力）';
+}
+function saveEstSpecModal(markTentative){
+  if(!estSpecItemId)return;
+  const spec=collectSpecFromForm();
+  if(!spec.site){alert('現場名は必須です');return;}
+  const{site,estName,product,size,finish,qty,...rest}=spec;
+  items=items.map(x=>x.id===estSpecItemId?{...x,site,estName,product,size,finish,qty,...rest,...(markTentative?{tentativeCheck:true}:{}),updatedAt:Date.now()}:x);
+  uH(site,product,null,null,null,estName,finish);
+  saveAll();closeEstSpecModal();renderItems();flash(markTentative?'仮チェックして保存しました':'仕様詳細を保存しました');
+}
+
+function convertEstToProgress(id){
+  const x=items.find(i=>i.id===id);if(!x)return;
+  const combinedProduct=[x.estName,x.product].map(s=>(s||'').trim()).filter(Boolean).join('　')||x.product||x.estName||'';
+  if(!confirm(`「${combinedProduct||'この項目'}」を見積りから進行中に移行しますか？`))return;
+  if(!confirm('本当に移行してよろしいですか？（この操作は取り消せません）'))return;
+  items=items.map(i=>i.id===id?{...i,isEstimate:false,product:combinedProduct,updatedAt:Date.now()}:i);
+  editItemId=id;
+  if(document.getElementById('est-spec-modal').classList.contains('show'))closeEstSpecModal();
+  saveAll();flash('進行中に移行しました　→ 工程日など詳細を入力してください');
+  setIView('tbl');
+}
+/* 現場ごとの見積りをまとめて進行中へ移行する */
+function convertSiteEstToProgress(site){
+  const siteItems=items.filter(x=>x.isEstimate&&x.site===site);
+  if(!siteItems.length)return;
+  if(!confirm(`「${site}」の見積り${siteItems.length}件をまとめて進行中に移行しますか？`))return;
+  if(!confirm('本当に移行してよろしいですか？（この操作は取り消せません）'))return;
+  items=items.map(x=>{
+    if(!(x.isEstimate&&x.site===site))return x;
+    const combinedProduct=[x.estName,x.product].map(s=>(s||'').trim()).filter(Boolean).join('　')||x.product||x.estName||'';
+    return{...x,isEstimate:false,product:combinedProduct,updatedAt:Date.now()};
+  });
+  saveAll();flash(`「${site}」の見積り${siteItems.length}件をまとめて進行中に移行しました　→ 工程日など詳細を入力してください`);
+  setIView('tbl');
+}
 
 function buildItemSiteText(site,siteItems){
   const today=new Date(),ymd=`${today.getMonth()+1}月${today.getDate()}日`;
@@ -3565,7 +4660,7 @@ function buildItemSiteText(site,siteItems){
   return t;
 }
 function copyItemSite(site,btnEl){
-  navigator.clipboard.writeText(buildItemSiteText(site,items.filter(x=>x.site===site))).then(()=>{
+  navigator.clipboard.writeText(buildItemSiteText(site,items.filter(x=>x.site===site&&!x.isEstimate))).then(()=>{
     const sid=site.replace(/\W/g,'_'),btn=btnEl||document.getElementById('icpbtn-'+sid);
     if(!btn)return;
     const orig=btn.innerHTML;
@@ -3612,7 +4707,7 @@ function copyAllTasks(){
   });
 }
 function copyAllItems(){
-  let rows=items.filter(x=>!isDone(x));
+  let rows=items.filter(x=>!isDone(x)&&!x.isEstimate);
   if(itemF==='ov')rows=rows.filter(x=>x.asap||itemUrgD(x)<=3);
   const ss=[...new Set(rows.map(x=>x.site))];
   if(!ss.length){alert('対象の製品なし');return;}
@@ -3628,7 +4723,7 @@ function copyAllItems(){
    簡潔に：挨拶なし、曜日なし。日付は「残N日」、2週間以上先は「残N週」。ステータスごとに区切り線。 */
 function buildFactoryText(statuses){
   const wanted=statuses||[1,2,3,4,5];
-  const relevant=items.filter(x=>wanted.includes(x.itemStatus??0));
+  const relevant=items.filter(x=>wanted.includes(x.itemStatus??0)&&!x.isEstimate);
   if(!relevant.length)return'';
   const inHouse=relevant.filter(x=>x.type!=='外注');
   const outsourced=relevant.filter(x=>x.type==='外注');
@@ -3728,6 +4823,15 @@ function factoryMarkerSpan(text,tone){
   return`<span style="background:linear-gradient(100deg,transparent 0%,${c[0]} 6%,${c[0]} 94%,transparent 100%);padding:1px 6px;font-size:10px;font-weight:700;color:${c[1]};white-space:nowrap">${escH(text)}</span>`;
 }
 /* 日付キー（processDate、無ければ'_undated'）1つ分の見出しタグ。asap品が混じっていれば日付に関わらず「至急」を優先表示 */
+/* ボード画像専用の残日数計算：工程日より取付予定日／納期（＝installDate）を優先する（工程日は未入力時のみのフォールバック） */
+function factoryUrgD(x){
+  if(isDone(x))return 9999;
+  if(x.asap)return-999;
+  if(x.installDate)return dif(x.installDate);
+  const pd=x.processDate?dif(x.processDate):9999;
+  const cl=x.clientDeadline&&!isDone(x)?dif(x.clientDeadline):9999;
+  return Math.min(pd,cl);
+}
 function factoryDateTagHtml(dateKey,hasAsap){
   if(hasAsap)return factoryMarkerSpan('⚡至急','yellow');
   if(dateKey==='_undated')return`<span style="font-size:10px;color:#999">日程未定</span>`;
@@ -3749,13 +4853,13 @@ function buildFactoryBoardSection(rows){
   const bySite={};
   rows.forEach(x=>{(bySite[x.site]=bySite[x.site]||[]).push(x);});
   const siteOrder=Object.keys(bySite).sort((a,b)=>{
-    const ua=Math.min(...bySite[a].map(itemUrgD)),ub=Math.min(...bySite[b].map(itemUrgD));
+    const ua=Math.min(...bySite[a].map(factoryUrgD)),ub=Math.min(...bySite[b].map(factoryUrgD));
     return ua!==ub?ua-ub:a.localeCompare(b,'ja');
   });
   return siteOrder.map((site,i)=>{
     const bySiteRows=bySite[site];
     const byDate={};
-    bySiteRows.forEach(x=>{const k=x.processDate||'_undated';(byDate[k]=byDate[k]||[]).push(x);});
+    bySiteRows.forEach(x=>{const k=x.installDate||x.processDate||'_undated';(byDate[k]=byDate[k]||[]).push(x);});
     const dateKeys=Object.keys(byDate).filter(k=>k!=='_undated').sort();
     const orderedKeys=byDate['_undated']?[...dateKeys,'_undated']:dateKeys;
     const groupsHtml=orderedKeys.map(k=>{
@@ -3770,12 +4874,27 @@ function buildFactoryBoardSection(rows){
     </div>`;
   }).join('');
 }
+/* 中央列：取付ステータス（6）の項目を現場でまとめず、予定日（＝installDate、無ければ工程日）だけでグループ化して表示する */
+function buildFactoryInstallColumn(rows){
+  if(!rows.length)return`<div style="font-size:10px;color:#ccc">なし</div>`;
+  const byDate={};
+  rows.forEach(x=>{const k=x.installDate||x.processDate||'_undated';(byDate[k]=byDate[k]||[]).push(x);});
+  const dateKeys=Object.keys(byDate).filter(k=>k!=='_undated').sort();
+  const orderedKeys=byDate['_undated']?[...dateKeys,'_undated']:dateKeys;
+  return orderedKeys.map(k=>{
+    const gi=byDate[k];
+    const tagHtml=factoryDateTagHtml(k,gi.some(x=>x.asap));
+    const itemsHtml=gi.map(x=>`<div style="font-size:10px;color:#444;margin:0 0 3px 4px">・${escH(x.product||'')}${x.type==='外注'?'（外注）':''}${x.outsourceConfirming?'<span style="color:#0E6E7C;font-weight:700"> 外注確認中</span>':''}<div style="font-size:9px;color:#999;margin-left:11px">${escH(x.site||'')}</div></div>`).join('');
+    return`<div style="margin:4px 0 1px 0">${tagHtml}</div>${itemsHtml}`;
+  }).join('');
+}
 function buildFactoryBoardHtml(){
-  const relevant=items.filter(x=>{const st=x.itemStatus??0;return st<=5;});
+  const relevant=items.filter(x=>{const st=x.itemStatus??0;return st<=6&&!x.isEstimate;});
   const today=new Date(),mmdd=`${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  const installRows=relevant.filter(x=>(x.itemStatus??0)===6).sort((a,b)=>factoryUrgD(a)-factoryUrgD(b));
   // 各ステータス欄内では、「納品のみ」（取付人数不要・郵送や持ち込み納品のみ）の項目を一番下にサブタイトルで分けて表示する
   const sectionsHtml=FACTORY_BOARD_SECTIONS.map(s=>{
-    const rows=relevant.filter(x=>(x.itemStatus??0)===s.key).sort((a,b)=>itemUrgD(a)-itemUrgD(b));
+    const rows=relevant.filter(x=>(x.itemStatus??0)===s.key).sort((a,b)=>factoryUrgD(a)-factoryUrgD(b));
     const normalRows=rows.filter(x=>!x.deliveryOnly),deliveryRows=rows.filter(x=>x.deliveryOnly);
     let bodyHtml=buildFactoryBoardSection(normalRows);
     if(deliveryRows.length){
@@ -3803,13 +4922,17 @@ function buildFactoryBoardHtml(){
       ${t.site?`<div style="font-size:9px;color:#999;margin-top:1px">${escH(t.site)}</div>`:''}
     </div>`;
   }).join(''):`<div style="font-size:10px;color:#ccc">タスクなし</div>`;
-  return`<div style="font-family:-apple-system,'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif;background:#fff;padding:14px;width:900px;box-sizing:border-box">
+  return`<div style="font-family:-apple-system,'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif;background:#fff;padding:14px;width:1180px;box-sizing:border-box">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;border-bottom:1.5px solid #333;padding-bottom:5px">
       <div style="font-size:15px;font-weight:700;color:#222">${mmdd}進捗ボード</div>
       <div style="font-size:10px;color:#999">全${relevant.length}件</div>
     </div>
     <div style="display:flex;gap:14px">
       <div style="flex:1;min-width:0">${sectionsHtml}</div>
+      <div style="width:230px;flex-shrink:0;border-left:1px solid #eee;padding-left:12px">
+        <div style="font-size:11px;font-weight:700;color:#A83A17;margin-bottom:6px">🔧 取付<span style="color:#bbb;font-weight:400;margin-left:4px">${installRows.length}件</span></div>
+        ${buildFactoryInstallColumn(installRows)}
+      </div>
       <div style="width:220px;flex-shrink:0;border-left:1px solid #eee;padding-left:12px">
         <div style="font-size:11px;font-weight:700;color:#444;margin-bottom:6px">タスク<span style="color:#bbb;font-weight:400;margin-left:4px">${activeTasks.length}件</span></div>
         ${tasksHtml}
@@ -3820,7 +4943,7 @@ function buildFactoryBoardHtml(){
 /* ダッシュ上部・製品一覧タブの両方に同じ機能のボタンがあるため、押されたボタン自身(btn)を受け取って更新する */
 function copyFactoryImage(btn){
   btn=btn||document.getElementById('factory-copy-btn');
-  const relevant=items.filter(x=>{const st=x.itemStatus??0;return st<=5;});
+  const relevant=items.filter(x=>{const st=x.itemStatus??0;return st<=5&&!x.isEstimate;});
   const activeTasks=tasks.filter(t=>!t.done);
   if(!relevant.length&&!activeTasks.length){alert('対象の製品・タスクなし');return;}
   if(typeof html2canvas==='undefined'){flash('画像化ライブラリを読み込めませんでした（通信環境をご確認ください）');return;}
@@ -4347,7 +5470,7 @@ function confirmReceive(){
   const cl=gv('rcv-cl');
   const srcPend=rcvPendId!=null?pends.find(x=>x.id===rcvPendId):null;
   const outsourceCompany=srcPend?.outsourceCompany||'';
-  items.push({id:nid++,type,site,product:prod,processDate:pd,makeDeadline:md,clientDeadline:cl,desiredDate:dd,asap,itemStatus:0,outsourceCompany,memo:'',notOrdered:false,outsourceConfirming:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
+  items.push({id:nid++,type,site,product:prod,processDate:pd,makeDeadline:md,clientDeadline:cl,desiredDate:dd,asap,itemStatus:0,outsourceCompany,memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
   if(addSiteChk&&pd){
     sites.push({id:nid++,dateStart:pd,dateEnd:pd,site,shift:0,count:1,company:'',status:0,memo:''});
     uH(site,null,null);
