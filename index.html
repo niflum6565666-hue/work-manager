@@ -376,6 +376,7 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
       </div>
       <div id="item-est-wrap" style="margin-top:16px">
         <div class="sh">💰 見積り</div>
+        <div id="est-price-panel"></div>
         <div id="item-est-section"></div>
       </div>
     </div>
@@ -654,7 +655,12 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
       ④ 項目別内訳
       <button class="pbtn sm" onclick="addEstBreakdownRow()">+ 項目追加</button>
     </div>
-    <div style="font-size:9px;color:var(--tt);margin-bottom:4px">配分は「割」で入力（例：4→4割＝40%）。空欄の項目には残りを自動で均等配分。内訳が未入力の場合は10割（全額）で計算されます。</div>
+    <div style="display:flex;gap:4px;margin-bottom:4px">
+      <button type="button" class="pbtn sm" id="est-bd-mode-percent" onclick="setEstBdMode('percent')" style="flex:1">％で入力</button>
+      <button type="button" class="pbtn sm" id="est-bd-mode-total" onclick="setEstBdMode('total')" style="flex:1">延べで按分</button>
+    </div>
+    <div id="est-bd-help-percent" style="font-size:9px;color:var(--tt);margin-bottom:4px">配分は「割」で入力（例：4→4割＝40%）。空欄の項目には残りを自動で均等配分。内訳が未入力の場合は10割（全額）で計算されます。</div>
+    <div id="est-bd-help-total" style="font-size:9px;color:var(--tt);margin-bottom:4px;display:none">各項目に延べ（数量・重量など、比較できる数値ならなんでも可）を入力すると、その合計に対する割合で自動的に配分されます。未入力（空欄）の項目は0%になります。</div>
     <div id="est-breakdown-items"></div>
     <div id="est-bd-pctsum" style="font-size:10px;color:var(--ts);text-align:right;margin-top:2px"></div>
 
@@ -917,11 +923,15 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
 <div class="modal-ov" id="quick-est-modal">
   <div class="modal" style="max-width:380px">
     <div class="modal-title"><i class="ti ti-bolt"></i> 概算見積り（簡易） <span id="qe-item-label" style="font-size:11px;color:var(--ts);font-weight:400"></span></div>
-    <div style="font-size:10px;font-weight:700;color:var(--ts);margin:4px 0 4px;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:10px;font-weight:700;color:var(--ts);margin:4px 0 4px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
       項目
-      <button class="pbtn sm" onclick="addQeMaterialQuoteRow()">＋ 見積り追加</button>
+      <span style="display:flex;gap:4px">
+        <button class="pbtn sm" onclick="addQeMaterialQuoteRow()">＋ 見積り追加</button>
+        <button class="pbtn sm" style="background:#EAF3DE;color:#27500A;border:.5px solid #A9CE8C" onclick="openQesModal()" title="ST・SUS・AL・その他から選んで、kgや体積から金額を計算して追加します">🔩 鋼材追加</button>
+        <button class="pbtn sm" style="background:var(--bs);color:var(--tp);border:.5px solid var(--bm)" onclick="openPriceHistoryModal()" title="鋼材のキロ単価の履歴を見る">📊 単価データ</button>
+      </span>
     </div>
-    <div style="font-size:9px;color:var(--tt);margin-bottom:4px">材料費・加工費など、基本原価の内訳を項目ごとに1件ずつ追加してください。</div>
+    <div style="font-size:9px;color:var(--tt);margin-bottom:4px">材料費・加工費など、基本原価の内訳を項目ごとに1件ずつ追加してください。単価（千円）×個数で自動計算されます。同じ項目名を続けて追加すると、まとめて計を表示します。</div>
     <div id="qe-material-quotes"></div>
     <div id="qe-material-quotes-sum" style="font-size:10px;color:var(--ts);text-align:right;margin-top:2px"></div>
 
@@ -953,6 +963,121 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
     <div class="modal-actions">
       <button class="pbtn" style="background:var(--bs);color:var(--tp);border:.5px solid var(--bm)" onclick="closeQuickEstModal()">キャンセル</button>
       <button class="pbtn grn" onclick="saveQuickEstModal()"><i class="ti ti-circle-check"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 鋼材追加モーダル（ST/SUS/ALを選び、kg×単価 または サイズ・厚みからの体積換算でキロ単価を計算して概算見積りの項目に追加する） -->
+<div class="modal-ov" id="qe-steel-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title" id="qes-modal-title"><i class="ti ti-building-factory-2"></i> 鋼材追加</div>
+    <div class="modal-row" style="gap:4px;margin-bottom:6px">
+      <button type="button" class="pbtn sm" id="qes-type-ST" onclick="setQesType('ST')" style="flex:1">ST</button>
+      <button type="button" class="pbtn sm" id="qes-type-SUS" onclick="setQesType('SUS')" style="flex:1">SUS</button>
+      <button type="button" class="pbtn sm" id="qes-type-AL" onclick="setQesType('AL')" style="flex:1">AL</button>
+      <button type="button" class="pbtn sm" id="qes-type-OTHER" onclick="setQesType('OTHER')" style="flex:1">その他</button>
+    </div>
+    <div class="modal-row" style="gap:4px;margin-bottom:6px">
+      <button type="button" class="pbtn sm" id="qes-form-plate" onclick="setQesForm('plate')" style="flex:1">板材</button>
+      <button type="button" class="pbtn sm" id="qes-form-bar" onclick="setQesForm('bar')" style="flex:1">鋼材（形材）</button>
+    </div>
+    <div class="modal-row" id="qes-cut-row" style="gap:4px;margin-bottom:6px">
+      <span style="font-size:9px;color:var(--ts);flex:none;white-space:nowrap">加工方法：</span>
+      <button type="button" class="pbtn sm" id="qes-cut-shearing" onclick="setQesCut('shearing')" style="flex:1">シャーリング</button>
+      <button type="button" class="pbtn sm" id="qes-cut-laser" onclick="setQesCut('laser')" style="flex:1">レーザー</button>
+    </div>
+    <div class="modal-row">
+      <label>項目名</label>
+      <input id="qes-name" list="dl-ci" readonly style="background:var(--bs);color:var(--tp);font-weight:700;cursor:not-allowed" title="材質から自動で決まります（編集不可）">
+    </div>
+    <div id="qes-kgprice-fields">
+      <div class="modal-row" style="flex-wrap:wrap">
+        <label>重量</label><input type="number" id="qes-weight" step="0.01" min="0" style="flex:none;width:72px" oninput="renderQesCalc()"><span style="font-size:10px;color:var(--ts)">kg（1個あたり）</span>
+      </div>
+      <div class="modal-row" style="flex-wrap:wrap">
+        <label>単価</label><input type="number" id="qes-kgunit" step="1" min="0" style="flex:none;width:72px" oninput="renderQesCalc()"><span style="font-size:10px;color:var(--ts)">円/kg</span>
+      </div>
+    </div>
+    <div id="qes-volume-fields" style="display:none">
+      <div class="modal-row" id="qes-kind-row" style="flex-wrap:wrap">
+        <label>種類</label>
+        <select id="qes-sus-kind" onchange="updateQesName();renderQesCalc()" style="flex:none;width:110px">
+          <option value="2B">2B</option>
+          <option value="HL">HL</option>
+          <option value="鏡面#400">鏡面＃400</option>
+          <option value="鏡面#800">鏡面＃800</option>
+        </select>
+      </div>
+      <div class="modal-row" style="flex-wrap:wrap;gap:4px">
+        <label>幅</label><input type="number" id="qes-w" step="1" min="0" style="flex:none;width:60px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">mm</span>
+        <label style="margin-left:2px">長さ</label><input type="number" id="qes-l" step="1" min="0" style="flex:none;width:60px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">mm</span>
+        <label style="margin-left:2px">厚み</label><input type="number" id="qes-t" step="0.1" min="0" style="flex:none;width:52px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">mm</span>
+      </div>
+      <div class="modal-row" style="flex-wrap:wrap">
+        <label>密度</label><input type="number" id="qes-density" step="0.01" min="0" value="7.93" style="flex:none;width:60px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">g/cm³（SUS304の目安。他の材質なら変更してください）</span>
+      </div>
+      <div class="modal-row" style="flex-wrap:wrap">
+        <label>見積総額</label><input type="number" id="qes-total" step="1" min="0" style="flex:none;width:90px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">円（1個あたり・単価回答された金額）</span>
+      </div>
+    </div>
+    <div style="border-top:.5px solid var(--bm);margin-top:8px;padding-top:6px">
+      <div style="font-size:10px;font-weight:700;color:var(--ts);margin-bottom:4px">加工（該当するものだけ入力）</div>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;margin-bottom:2px"><input type="checkbox" id="qes-bend-on" onchange="toggleQesSection('bend');renderQesCalc()"> 曲げ加工</label>
+      <div id="qes-bend-fields" style="display:none;margin:2px 0 8px 18px">
+        <div class="modal-row" style="gap:4px;flex-wrap:wrap">
+          <label>回数</label><input type="number" id="qes-bend-count" step="1" min="0" style="flex:none;width:52px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">回（1個あたり）</span>
+          <label style="margin-left:6px">金額</label><input type="number" id="qes-bend-amount" step="1" min="0" style="flex:none;width:80px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">円（1個あたり合計）</span>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;margin-bottom:2px"><input type="checkbox" id="qes-roll-on" onchange="toggleQesSection('roll');renderQesCalc()"> ロール加工</label>
+      <div id="qes-roll-fields" style="display:none;margin:2px 0 8px 18px">
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;margin-bottom:2px"><input type="checkbox" id="qes-roll-sand" onchange="toggleQesSection('roll');renderQesCalc()"> 砂詰め（形状保持のための追加加工）あり</label>
+        <div class="modal-row" style="gap:4px;flex-wrap:wrap">
+          <label>ロールのみ</label><input type="number" id="qes-roll-amount" step="1" min="0" style="flex:none;width:80px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">円（1個あたり）</span>
+        </div>
+        <div class="modal-row" style="gap:4px;flex-wrap:wrap" id="qes-roll-sand-row">
+          <label>砂詰め追加</label><input type="number" id="qes-roll-sand-amount" step="1" min="0" style="flex:none;width:80px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">円（1個あたり・追加分のみ）</span>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;margin-bottom:2px"><input type="checkbox" id="qes-hole-on" onchange="toggleQesSection('hole');renderQesCalc()"> 穴あけ加工</label>
+      <div id="qes-hole-fields" style="display:none;margin:2px 0 8px 18px">
+        <div class="modal-row" style="gap:4px;flex-wrap:wrap">
+          <label>個数</label><input type="number" id="qes-hole-count" step="1" min="0" style="flex:none;width:52px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">個（1個あたり）</span>
+          <label style="margin-left:6px">金額</label><input type="number" id="qes-hole-amount" step="1" min="0" style="flex:none;width:80px" oninput="renderQesCalc()"><span style="font-size:9px;color:var(--ts)">円（1個あたり合計）</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-row">
+      <label>個数</label><input type="number" id="qes-qty" step="any" min="0" value="1" style="flex:none;width:56px" oninput="renderQesCalc()"><span style="font-size:10px;color:var(--ts)">枚・本（小数可）</span>
+    </div>
+    <div class="modal-row" style="background:var(--bs);border-radius:6px;padding:6px 8px;margin-top:6px;flex-direction:column;align-items:flex-start;gap:2px">
+      <span id="qes-weight-info" style="font-size:10px;color:var(--ts)"></span>
+      <span style="font-size:11px;color:var(--ts)">金額合計 <b id="qes-amount" style="font-size:15px"></b></span>
+    </div>
+    <div class="modal-actions">
+      <button class="pbtn" style="background:var(--bs);color:var(--tp);border:.5px solid var(--bm)" onclick="closeQesModal()">キャンセル</button>
+      <button class="pbtn grn" onclick="saveQesModal()"><i class="ti ti-circle-check"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 単価データモーダル（鋼材追加で記録したキロ単価の履歴。値上がり確認などの積算参考に） -->
+<div class="modal-ov" id="price-hist-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-title"><i class="ti ti-chart-line"></i> 単価データ（鋼材キロ単価の履歴）</div>
+    <div style="font-size:10px;color:var(--tt);margin-bottom:6px">概算見積りの「鋼材追加」で記録されたキロ単価の履歴です。同じ種類・サイズの過去の単価と見比べて、値上がり確認などにお使いください。</div>
+    <div class="modal-row" style="gap:4px;margin-bottom:6px">
+      <select id="ph-filter-type" onchange="renderPriceHistoryModal()" style="flex:none">
+        <option value="">全種類</option>
+        <option value="ST">ST</option>
+        <option value="SUS">SUS</option>
+        <option value="AL">AL</option>
+        <option value="OTHER">その他</option>
+      </select>
+    </div>
+    <div id="price-hist-body" style="overflow-x:auto;max-height:50vh"></div>
+    <div class="modal-actions">
+      <button class="pbtn" style="background:var(--bs);color:var(--tp);border:.5px solid var(--bm)" onclick="closePriceHistoryModal()">閉じる</button>
     </div>
   </div>
 </div>
@@ -1523,6 +1648,8 @@ const siteColorMap=load('siteColorMap',{}),coColorMap=load('coColorMap',{});
 // 現場ごとの備考メモと昼/夜工事フラグ（現場名がキー。現場予定の時間帯とは別の、製品タブのヘッダーで見る簡易メモ・目印）
 // items/sitesなどと同じく他端末とも共有したいデータなので、saveAll・pushToCloud・applyRemoteSnapshotの対象に含める
 let siteNotes=load('siteNotes',{}),siteWorkTime=load('siteWorkTime',{});
+// 鋼材のキロ単価履歴（概算見積りの「鋼材追加」で記録）。値上がり確認などの積算参考データとして蓄積する
+let priceHistory=load('priceHistory',[]);
 function getSiteWorkTime(site){return siteWorkTime[site]||{day:false,night:false};}
 // 現場メモ：箇条書き（配列）で保持。以前の単一テキストのデータもそのまま読めるよう配列に正規化する
 function getSiteNoteList(site){
@@ -1623,7 +1750,7 @@ const TASK_PRESETS=[{k:'asap',label:'至急'},{k:'today',label:'今日中'},{k:'
 /* ===== STORAGE ===== */
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
-function saveAll(){sv('hist',hist);sv('tasks',tasks);sv('items',items);sv('sites',sites);sv('pends',pends);sv('avails',avails);sv('nid',nid);sv('coefConfig',coefConfig);sv('manpowerCostPerDay',manpowerCostPerDay);sv('targetCostRate',targetCostRate);sv('targetMaterialMargin',targetMaterialMargin);sv('itemTemplates',itemTemplates);sv('siteNotes',siteNotes);sv('siteWorkTime',siteWorkTime);sv('estSortMode',estSortMode);updateTabBadges();pushToCloud();}
+function saveAll(){sv('hist',hist);sv('tasks',tasks);sv('items',items);sv('sites',sites);sv('pends',pends);sv('avails',avails);sv('nid',nid);sv('coefConfig',coefConfig);sv('manpowerCostPerDay',manpowerCostPerDay);sv('targetCostRate',targetCostRate);sv('targetMaterialMargin',targetMaterialMargin);sv('itemTemplates',itemTemplates);sv('siteNotes',siteNotes);sv('siteWorkTime',siteWorkTime);sv('estSortMode',estSortMode);sv('priceHistory',priceHistory);updateTabBadges();pushToCloud();}
 
 /* ===== 同期（Firebase Firestore・任意設定）：設定していなければ何もしない =====
    PCとiPadなど、同じFirebase設定を貼り付けた端末どうしで items/sites/tasks... をまるごと1つのFirestoreドキュメントとして共有する。
@@ -1705,6 +1832,7 @@ function applyRemoteSnapshot(data){
     if(data.itemTemplates!==undefined){itemTemplates=data.itemTemplates;sv('itemTemplates',itemTemplates);}
     if(data.siteNotes!==undefined){siteNotes=data.siteNotes;sv('siteNotes',siteNotes);}
     if(data.siteWorkTime!==undefined){siteWorkTime=data.siteWorkTime;sv('siteWorkTime',siteWorkTime);}
+    if(data.priceHistory!==undefined){priceHistory=data.priceHistory;sv('priceHistory',priceHistory);}
     updateTabBadges();
     renderAllViews();
   }finally{
@@ -1725,7 +1853,7 @@ function pushToCloud(force){
   clearTimeout(syncPushTimer);
   syncPushTimer=setTimeout(()=>{
     const now=Date.now();
-    const payload=JSON.parse(JSON.stringify({hist,tasks,items,sites,pends,avails,nid,coefConfig,manpowerCostPerDay,targetCostRate,targetMaterialMargin,itemTemplates,siteNotes,siteWorkTime,updatedAt:now}));
+    const payload=JSON.parse(JSON.stringify({hist,tasks,items,sites,pends,avails,nid,coefConfig,manpowerCostPerDay,targetCostRate,targetMaterialMargin,itemTemplates,siteNotes,siteWorkTime,priceHistory,updatedAt:now}));
     lastPushedAt=now; // このタイムスタンプがそのまま返ってきたら自分のechoとして無視する
     syncDb.collection(SYNC_COLLECTION).doc(SYNC_DOC).set(payload,{merge:true})
       .then(()=>setSyncStatus('synced','同期済み'))
@@ -2388,6 +2516,7 @@ function calcEstimate(x,mpCost=manpowerCostPerDay){
   return{manpowerCost,totalCost,costRate,roughQuote,welfare,overhead,productPrice,transportationCost,productPriceAfterTransport,breakdown,pctSum,allocatedSum,finalQuote,diffFromRough,executionCost,profitVsQuote,profitVsActual};
 }
 let estItemId=null,estBreakdown=[];
+let estBdMode='percent';
 // ⑥実行価格・粗利の各項目が「実際の値を入力済みか」を保持するフラグ。未入力(false)の間は①の基本原価とリアルタイムで連動させる。
 let estActualTouched={material:false,drawing:false,production:false};
 function touchEstActual(field){estActualTouched[field]=true;renderEstCalc();}
@@ -2406,6 +2535,7 @@ function openEstModal(id){
   const x=items.find(i=>i.id===id);if(!x)return;
   estItemId=id;
   estBreakdown=(x.itemBreakdown||[]).map(b=>({...b}));
+  estBdMode=x.itemBreakdownMode||'percent';
   document.getElementById('est-item-label').textContent=`${x.site} / ${x.product}`;
   document.getElementById('est-material-cost').value=x.materialCost?Math.round(x.materialCost/1000*100)/100:0;
   renderEstMaterialQuotesRef(x);
@@ -2424,7 +2554,7 @@ function openEstModal(id){
   document.getElementById('est-actual-material-cost').value=estActualTouched.material?Math.round(x.actualMaterialCost/1000*100)/100:0;
   document.getElementById('est-actual-mp-drawing').value=estActualTouched.drawing?x.actualManpowerDrawing:0;
   document.getElementById('est-actual-mp-production').value=estActualTouched.production?x.actualManpowerProduction:0;
-  renderEstBreakdown();
+  setEstBdMode(estBdMode);
   populateEstTplSelect();
   renderEstCalc();
   document.getElementById('est-modal').classList.add('show');
@@ -2441,18 +2571,36 @@ function populateCoefSelects(sel){
 function renderEstBreakdown(){
   document.getElementById('est-breakdown-items').innerHTML=estBreakdown.map((b,i)=>{
     const wari=b.percentage!=null?Math.round(b.percentage/10*100)/100:'',qty=b.quantity!=null?b.quantity:'';
+    const val=(b.value!=null&&b.value!=='')?b.value:'';
+    const shareInput=estBdMode==='total'
+      ?`<input type="number" value="${val}" step="any" min="0" placeholder="延べ" oninput="estBreakdown[${i}].value=this.value===''?'':(Number(this.value)||0);renderEstCalc()" style="flex:none;width:64px">`
+      :`<input type="number" value="${wari}" step="0.5" min="0" max="10" placeholder="配分" oninput="estBreakdown[${i}].percentage=this.value===''?null:(Number(this.value)||0)*10;renderEstCalc()" style="flex:none;width:52px"><span style="font-size:10px;color:var(--ts)">割</span>`;
     return`
     <div class="modal-row" style="margin-bottom:2px">
       <input value="${(b.name||'').replace(/"/g,'&quot;')}" list="dl-ci" placeholder="項目名（例：製品代）" oninput="estBreakdown[${i}].name=this.value" style="flex:2">
-      <input type="number" value="${wari}" step="0.5" min="0" max="10" placeholder="配分" oninput="estBreakdown[${i}].percentage=this.value===''?null:(Number(this.value)||0)*10;renderEstCalc()" style="flex:none;width:52px">
-      <span style="font-size:10px;color:var(--ts)">割</span>
+      ${shareInput}
       <input type="number" value="${qty}" step="1" min="0" placeholder="数量" oninput="estBreakdown[${i}].quantity=this.value===''?'':Number(this.value)||0;renderEstCalc()" style="flex:none;width:56px">
       <button class="xb" onclick="estBreakdown.splice(${i},1);renderEstBreakdown();renderEstCalc()" title="削除">×</button>
     </div>
     <div id="est-bd-sub-${i}" style="font-size:10px;color:var(--ts);text-align:right;margin:-2px 0 6px"></div>`;
   }).join('')||'<div style="font-size:10px;color:var(--tt);padding:4px 0">内訳項目なし（10割＝全額で計算されます）</div>';
 }
-function addEstBreakdownRow(){estBreakdown.push({name:'',percentage:null,quantity:''});renderEstBreakdown();}
+function addEstBreakdownRow(){estBreakdown.push({name:'',percentage:null,quantity:'',value:''});renderEstBreakdown();}
+/* 項目別内訳の配分方式：％入力（従来通り、直接「割」で入力）／延べ按分（延べ値を入力し、合計に対する割合を自動計算）を切替える。
+   延べ按分モードでは、空欄（未入力）の項目は0%として扱う（％入力モードの「空欄は残りを自動で均等配分」とは異なる挙動）。 */
+function setEstBdMode(m){
+  estBdMode=m;
+  ['percent','total'].forEach(k=>{
+    const b=document.getElementById('est-bd-mode-'+k);if(!b)return;
+    const on=k===m;
+    b.style.background=on?'#0F6E56':'var(--bs)';b.style.color=on?'#fff':'var(--tp)';b.style.border=on?'.5px solid #0F6E56':'.5px solid var(--bm)';
+  });
+  const hp=document.getElementById('est-bd-help-percent'),ht=document.getElementById('est-bd-help-total');
+  if(hp)hp.style.display=m==='total'?'none':'block';
+  if(ht)ht.style.display=m==='total'?'block':'none';
+  renderEstBreakdown();
+  renderEstCalc();
+}
 function setEstMpProduction(v){document.getElementById('est-mp-production').value=v;renderEstCalc();}
 function currentEstDraft(){
   const av=document.getElementById('est-actual').value;
@@ -2463,12 +2611,27 @@ function currentEstDraft(){
     transportationCost:(Number(document.getElementById('est-transport').value)||0)*1000,
     coefOther:Number(document.getElementById('est-coef-other').value)||0,
     coeffs:{drawing:gv('est-coef-drawing'),productionDifficulty:gv('est-coef-productionDifficulty'),finishDifficulty:gv('est-coef-finishDifficulty'),lot:gv('est-coef-lot'),delivery:gv('est-coef-delivery')},
-    itemBreakdown:estBreakdown.filter(b=>b.name||b.percentage!=null||b.quantity).map(b=>({name:b.name||'',percentage:b.percentage==null?null:Number(b.percentage)||0,quantity:b.quantity===''?0:Number(b.quantity)||0})),
+    itemBreakdownMode:estBdMode,
+    itemBreakdown:resolvedEstBreakdown(),
     actualQuote:av===''?'':Number(av)*1000,
     actualMaterialCost:(Number(document.getElementById('est-actual-material-cost').value)||0)*1000,
     actualManpowerDrawing:Number(document.getElementById('est-actual-mp-drawing').value)||0,
     actualManpowerProduction:Number(document.getElementById('est-actual-mp-production').value)||0
   };
+}
+/* 延べ按分モードのときは、各項目のvalue（延べ値）の合計に対する割合を計算しpercentageに変換したうえで、
+   既存の％方式の集計エンジン（calcEstimate）へそのまま渡す。％入力モードのときは従来通りpercentageをそのまま使う */
+function resolvedEstBreakdown(){
+  const rows=estBreakdown.filter(b=>b.name||b.percentage!=null||b.quantity||(b.value!=null&&b.value!==''));
+  if(estBdMode==='total'){
+    const valSum=rows.reduce((s,b)=>s+(Number(b.value)||0),0);
+    return rows.map(b=>{
+      const v=Number(b.value)||0;
+      const pct=valSum>0?Math.round((v/valSum)*1000)/10:0;
+      return{name:b.name||'',percentage:pct,quantity:b.quantity===''?0:Number(b.quantity)||0,value:b.value===''?null:v};
+    });
+  }
+  return rows.map(b=>({name:b.name||'',percentage:b.percentage==null?null:Number(b.percentage)||0,quantity:b.quantity===''?0:Number(b.quantity)||0,value:(b.value==null||b.value==='')?null:Number(b.value)||0}));
 }
 function renderEstCalc(){
   // ⑥のうち、まだ実際の値が入力されていない項目は①の基本原価をそのままリアルタイムでミラーする
@@ -2642,7 +2805,11 @@ let qeItemId=null,qeMaterialQuotes=[];
 function openQuickEstModal(id){
   const x=items.find(i=>i.id===id);if(!x)return;
   qeItemId=id;
-  qeMaterialQuotes=(x.materialQuotes||[]).map(q=>({...q}));
+  qeMaterialQuotes=(x.materialQuotes||[]).map(q=>{
+    const qty=q.qty!=null?(Number(q.qty)||0):1;
+    const unitAmount=q.unitAmount!=null?(Number(q.unitAmount)||0):(qty?(Number(q.amount)||0)/qty:(Number(q.amount)||0));
+    return{name:q.name||'',unitAmount,qty,amount:Math.round(unitAmount*qty),steel:q.steel?{...q.steel}:null};
+  });
   document.getElementById('qe-item-label').textContent=`${x.site} / ${x.product}`;
   document.getElementById('qe-mp-drawing').value=x.manpowerDrawing||0;
   document.getElementById('qe-mp-production').value=x.manpowerProduction||0;
@@ -2651,19 +2818,474 @@ function openQuickEstModal(id){
   document.getElementById('quick-est-modal').classList.add('show');
 }
 function closeQuickEstModal(){document.getElementById('quick-est-modal').classList.remove('show');qeItemId=null;}
-function renderQeMaterialQuotes(){
-  document.getElementById('qe-material-quotes').innerHTML=qeMaterialQuotes.map((q,i)=>{
-    const amt=q.amount?Math.round(q.amount/1000*100)/100:'';
-    return`
-    <div class="modal-row" style="margin-bottom:2px">
-      <input value="${(q.name||'').replace(/"/g,'&quot;')}" placeholder="項目名（例：材料、曲げ、溶接 等）" oninput="qeMaterialQuotes[${i}].name=this.value" style="flex:2">
-      <input type="number" value="${amt}" step="1" min="0" placeholder="例：12→12,000円" title="金額（千円単位）" oninput="qeMaterialQuotes[${i}].amount=(Number(this.value)||0)*1000;renderQeCalc()" style="flex:none;width:90px">
-      <span style="font-size:10px;color:var(--ts)">千円</span>
-      <button class="xb" onclick="qeMaterialQuotes.splice(${i},1);renderQeMaterialQuotes();renderQeCalc()" title="削除">×</button>
-    </div>`;
-  }).join('')||'<div style="font-size:10px;color:var(--tt);padding:4px 0">見積項目なし</div>';
+
+/* ===== 鋼材追加（ST/SUS/AL、kg×単価 または サイズ・厚みからの体積換算） ===== */
+let qesType='ST',qesEditIndex=null;
+function openQesModal(editIndex){
+  qesEditIndex=editIndex!=null?editIndex:null;
+  const q=qesEditIndex!=null?qeMaterialQuotes[qesEditIndex]:null;
+  const steel=q&&q.steel?q.steel:null;
+  document.getElementById('qes-sus-kind').value=steel&&steel.kind?steel.kind:'2B';
+  document.getElementById('qes-name').value=q?(q.name||''):'';
+  setQesType(steel?steel.type:(q?'OTHER':'ST'));
+  setQesForm(steel&&steel.formType?steel.formType:'plate');
+  setQesCut(steel&&steel.cutMethod?steel.cutMethod:'shearing');
+  document.getElementById('qes-weight').value=steel&&steel.mode==='kgprice'&&steel.weightKg?steel.weightKg:'';
+  document.getElementById('qes-kgunit').value=steel&&steel.mode==='kgprice'&&steel.kgPrice?steel.kgPrice:'';
+  document.getElementById('qes-w').value=steel&&steel.sizeW?steel.sizeW:'';
+  document.getElementById('qes-l').value=steel&&steel.sizeL?steel.sizeL:'';
+  document.getElementById('qes-t').value=steel&&steel.thickness?steel.thickness:'';
+  document.getElementById('qes-density').value=steel&&steel.density?steel.density:7.93;
+  document.getElementById('qes-total').value=steel&&steel.mode==='volume'&&steel.totalQuote?steel.totalQuote:'';
+  const bend=steel&&steel.bend?steel.bend:null,roll=steel&&steel.roll?steel.roll:null,hole=steel&&steel.hole?steel.hole:null;
+  document.getElementById('qes-bend-on').checked=!!(bend&&bend.on);
+  document.getElementById('qes-bend-count').value=bend&&bend.count?bend.count:'';
+  document.getElementById('qes-bend-amount').value=bend&&bend.amount?bend.amount:'';
+  document.getElementById('qes-roll-on').checked=!!(roll&&roll.on);
+  document.getElementById('qes-roll-sand').checked=!!(roll&&roll.sandFill);
+  document.getElementById('qes-roll-amount').value=roll&&roll.rollAmount?roll.rollAmount:'';
+  document.getElementById('qes-roll-sand-amount').value=roll&&roll.sandAmount?roll.sandAmount:'';
+  document.getElementById('qes-hole-on').checked=!!(hole&&hole.on);
+  document.getElementById('qes-hole-count').value=hole&&hole.count?hole.count:'';
+  document.getElementById('qes-hole-amount').value=hole&&hole.amount?hole.amount:'';
+  toggleQesSection('bend');toggleQesSection('roll');toggleQesSection('hole');
+  document.getElementById('qes-qty').value=q?(q.qty||1):1;
+  renderQesCalc();
+  document.getElementById('qe-steel-modal').classList.add('show');
 }
-function addQeMaterialQuoteRow(){qeMaterialQuotes.push({name:'',amount:0});renderQeMaterialQuotes();}
+function closeQesModal(){document.getElementById('qe-steel-modal').classList.remove('show');qesEditIndex=null;}
+function setQesType(t){
+  qesType=t;
+  ['ST','SUS','AL','OTHER'].forEach(k=>{
+    const b=document.getElementById('qes-type-'+k);
+    if(!b)return;
+    const on=k===t;
+    b.style.background=on?'#0F6E56':'var(--bs)';
+    b.style.color=on?'#fff':'var(--tp)';
+    b.style.border=on?'.5px solid #0F6E56':'.5px solid var(--bm)';
+  });
+  const isVolume=(t==='SUS'||t==='OTHER');
+  document.getElementById('qes-kgprice-fields').style.display=isVolume?'none':'block';
+  document.getElementById('qes-volume-fields').style.display=isVolume?'block':'none';
+  const kindRow=document.getElementById('qes-kind-row');if(kindRow)kindRow.style.display=t==='SUS'?'flex':'none';
+  const nameEl=document.getElementById('qes-name');
+  const fixedName=(t==='ST'||t==='SUS'||t==='AL');
+  if(nameEl){
+    nameEl.readOnly=fixedName;
+    nameEl.style.background=fixedName?'var(--bs)':'';
+    nameEl.style.cursor=fixedName?'not-allowed':'text';
+    nameEl.title=fixedName?'材質から自動で決まります（編集不可）':'項目名を自由に入力できます（例：ロールポンド、切板 等）';
+  }
+  const titleEl=document.getElementById('qes-modal-title');
+  if(titleEl)titleEl.innerHTML=`<i class="ti ti-building-factory-2"></i> ${t==='OTHER'?'詳細追加':'鋼材追加'}`;
+  updateQesName();
+  renderQesCalc();
+}
+/* 項目名は選択した材質（SUSは種類も含む）から必ず自動で決める。手入力を許すと同じ鋼材のはずが項目名がバラバラになり、
+   同項目グループ化や単価データの比較ができなくなるため、常に上書きする（readonly） */
+function buildQesName(type,kind){
+  if(type==='SUS')return kind?`SUS(${kind})`:'SUS';
+  return type;
+}
+function updateQesName(){
+  const nameEl=document.getElementById('qes-name');if(!nameEl)return;
+  if(qesType==='OTHER')return;
+  const kindEl=document.getElementById('qes-sus-kind');
+  nameEl.value=buildQesName(qesType,kindEl?kindEl.value:'');
+}
+let qesForm='plate',qesCut='shearing';
+function setQesForm(f){
+  qesForm=f;
+  ['plate','bar'].forEach(k=>{
+    const b=document.getElementById('qes-form-'+k);if(!b)return;
+    const on=k===f;
+    b.style.background=on?'#185FA5':'var(--bs)';b.style.color=on?'#fff':'var(--tp)';b.style.border=on?'.5px solid #185FA5':'.5px solid var(--bm)';
+  });
+  const cutRow=document.getElementById('qes-cut-row');
+  if(cutRow)cutRow.style.display=f==='plate'?'flex':'none';
+  renderQesCalc();
+}
+function setQesCut(c){
+  qesCut=c;
+  ['shearing','laser'].forEach(k=>{
+    const b=document.getElementById('qes-cut-'+k);if(!b)return;
+    const on=k===c;
+    b.style.background=on?'#8A5A12':'var(--bs)';b.style.color=on?'#fff':'var(--tp)';b.style.border=on?'.5px solid #8A5A12':'.5px solid var(--bm)';
+  });
+  renderQesCalc();
+}
+/* 曲げ／ロール／穴あけの詳細欄は、チェックを入れたときだけ表示する（普段は畳んで見やすく） */
+function toggleQesSection(kind){
+  if(kind==='bend'){
+    const f=document.getElementById('qes-bend-fields');if(f)f.style.display=document.getElementById('qes-bend-on').checked?'block':'none';
+  }else if(kind==='roll'){
+    const on=document.getElementById('qes-roll-on').checked;
+    const f=document.getElementById('qes-roll-fields');if(f)f.style.display=on?'block':'none';
+    const sandOn=document.getElementById('qes-roll-sand').checked;
+    const sr=document.getElementById('qes-roll-sand-row');if(sr)sr.style.display=(on&&sandOn)?'flex':'none';
+  }else if(kind==='hole'){
+    const f=document.getElementById('qes-hole-fields');if(f)f.style.display=document.getElementById('qes-hole-on').checked?'block':'none';
+  }
+}
+/* 曲げ・ロール・穴あけの入力値をまとめて取得する。すべて「1個あたり」の値として扱う（個数分は呼び出し元でqty倍する） */
+function qesProcessing(){
+  const bendOn=document.getElementById('qes-bend-on').checked;
+  const bendCount=Math.max(0,Number(document.getElementById('qes-bend-count').value)||0);
+  const bendAmount=Math.max(0,Number(document.getElementById('qes-bend-amount').value)||0);
+  const rollOn=document.getElementById('qes-roll-on').checked;
+  const rollSand=document.getElementById('qes-roll-sand').checked;
+  const rollAmount=Math.max(0,Number(document.getElementById('qes-roll-amount').value)||0);
+  const rollSandAmount=Math.max(0,Number(document.getElementById('qes-roll-sand-amount').value)||0);
+  const holeOn=document.getElementById('qes-hole-on').checked;
+  const holeCount=Math.max(0,Number(document.getElementById('qes-hole-count').value)||0);
+  const holeAmount=Math.max(0,Number(document.getElementById('qes-hole-amount').value)||0);
+  const total=(bendOn?bendAmount:0)+(rollOn?(rollAmount+(rollSand?rollSandAmount:0)):0)+(holeOn?holeAmount:0);
+  return{
+    bend:{on:bendOn,count:bendCount,amount:bendAmount},
+    roll:{on:rollOn,sandFill:rollSand,rollAmount,sandAmount:rollSandAmount},
+    hole:{on:holeOn,count:holeCount,amount:holeAmount},
+    total
+  };
+}
+/* ST/AL＝重量(kg)×単価(円/kg)を直接入力。SUS＝サイズ・厚み・密度から体積換算した重量と、単価回答された総額からキロ単価を逆算する。
+   曲げ・ロール・穴あけの加工費は材料費に加算し、板材／鋼材の別とシャーリング／レーザーの別は記録用に保持する */
+function qesCalc(){
+  const qty=Math.max(0,Number(document.getElementById('qes-qty').value)||0);
+  const proc=qesProcessing();
+  const formType=qesForm,cutMethod=formType==='plate'?qesCut:'';
+  if(qesType==='SUS'||qesType==='OTHER'){
+    const w=Number(document.getElementById('qes-w').value)||0;
+    const l=Number(document.getElementById('qes-l').value)||0;
+    const t=Number(document.getElementById('qes-t').value)||0;
+    const density=Number(document.getElementById('qes-density').value)||0;
+    const total=Number(document.getElementById('qes-total').value)||0;
+    const volumeCm3=(w/10)*(l/10)*(t/10);
+    const weightKg=Math.round(volumeCm3*density)/1000;
+    const kgPrice=weightKg>0?Math.round(total/weightKg):0;
+    const materialUnit=total;
+    const unitAmount=materialUnit+proc.total;
+    const amount=Math.round(unitAmount*qty);
+    const kind=qesType==='SUS'?document.getElementById('qes-sus-kind').value:'';
+    return{type:qesType,mode:'volume',kind,formType,cutMethod,sizeW:w,sizeL:l,thickness:t,density,totalQuote:total,volumeCm3,weightKg,kgPrice,materialUnit,proc,unitAmount,qty,amount};
+  }
+  const weightKg=Number(document.getElementById('qes-weight').value)||0;
+  const kgPrice=Number(document.getElementById('qes-kgunit').value)||0;
+  const materialUnit=Math.round(weightKg*kgPrice);
+  const unitAmount=materialUnit+proc.total;
+  const amount=Math.round(unitAmount*qty);
+  return{type:qesType,mode:'kgprice',formType,cutMethod,weightKg,kgPrice,materialUnit,proc,unitAmount,qty,amount};
+}
+function renderQesCalc(){
+  const r=qesCalc();
+  const infoEl=document.getElementById('qes-weight-info');
+  let baseTxt;
+  if(r.mode==='volume'){
+    baseTxt=r.weightKg?`体積 ${(r.volumeCm3||0).toFixed(1)}cm³　→　重量 ${r.weightKg.toFixed(2)}kg　→　キロ単価 目安¥${r.kgPrice.toLocaleString()}/kg`:'幅・長さ・厚みを入力してください';
+  }else{
+    baseTxt=r.weightKg?`重量 ${r.weightKg}kg × ¥${r.kgPrice.toLocaleString()}/kg`:'';
+  }
+  const procParts=[];
+  if(r.proc.bend.on)procParts.push(`曲げ${r.proc.bend.count}回 ¥${r.proc.bend.amount.toLocaleString()}`);
+  if(r.proc.roll.on)procParts.push(`ロール ¥${r.proc.roll.rollAmount.toLocaleString()}${r.proc.roll.sandFill?`＋砂詰め¥${r.proc.roll.sandAmount.toLocaleString()}`:''}`);
+  if(r.proc.hole.on)procParts.push(`穴あけ${r.proc.hole.count}個 ¥${r.proc.hole.amount.toLocaleString()}`);
+  if(infoEl)infoEl.textContent=[baseTxt,...procParts].filter(Boolean).join('　／　');
+  const amtEl=document.getElementById('qes-amount');
+  if(amtEl)amtEl.textContent=`¥${r.amount.toLocaleString()}`;
+}
+function saveQesModal(){
+  const r=qesCalc();
+  const name=(document.getElementById('qes-name').value||'').trim()||r.type;
+  const row={
+    name,
+    unitAmount:r.unitAmount,
+    qty:r.qty,
+    amount:r.amount,
+    steel:{
+      type:r.type,mode:r.mode,kind:r.kind||'',
+      formType:r.formType||'plate',cutMethod:r.cutMethod||'',
+      sizeW:r.sizeW||0,sizeL:r.sizeL||0,thickness:r.thickness||0,density:r.density||0,
+      totalQuote:r.totalQuote||0,weightKg:r.weightKg||0,kgPrice:r.kgPrice||0,materialUnit:r.materialUnit||0,
+      bend:{...r.proc.bend},roll:{...r.proc.roll},hole:{...r.proc.hole}
+    }
+  };
+  if(qesEditIndex!=null&&qeMaterialQuotes[qesEditIndex]){
+    qeMaterialQuotes[qesEditIndex]=row;
+  }else{
+    qeMaterialQuotes.push(row);
+  }
+  uH(null,null,null,name);
+  logPriceHistory(row);
+  renderQeMaterialQuotes();
+  renderQeCalc();
+  renderEstPricePanel();
+  closeQesModal();
+  flash(qesType==='OTHER'?'詳細を保存しました':'鋼材行を追加しました');
+}
+/* 重量が分かる（＝キロ単価が計算できる）鋼材行だけを、積算の参考データとして単価データ一覧に記録する */
+/* 材質のキロ単価に加え、曲げ・ロール・穴あけの加工費も別レコードとして記録する（entryTypeで区別）。
+   加工1回・1個あたりの単価をあとで平均できるよう、qty倍する前の「1個あたり」の値をそのまま記録する */
+function logPriceHistory(row){
+  if(!row.steel)return;
+  const s=row.steel;
+  const x=items.find(i=>i.id===qeItemId);
+  const site=x?x.site:'',product=x?x.product:'';
+  if(s.weightKg>0){
+    priceHistory.push({id:nid++,date:Date.now(),entryType:'material',site,product,name:row.name,type:s.type,kind:s.kind||'',formType:s.formType||'',cutMethod:s.cutMethod||'',sizeW:s.sizeW||0,sizeL:s.sizeL||0,thickness:s.thickness||0,density:s.density||0,weightKg:s.weightKg,kgPrice:s.kgPrice,totalQuote:s.mode==='volume'?s.totalQuote:(s.materialUnit||0),qty:row.qty});
+  }
+  if(s.bend&&s.bend.on&&s.bend.count>0){
+    priceHistory.push({id:nid++,date:Date.now(),entryType:'bend',site,product,name:row.name,count:s.bend.count,amount:s.bend.amount,qty:row.qty});
+  }
+  if(s.roll&&s.roll.on){
+    priceHistory.push({id:nid++,date:Date.now(),entryType:'roll',site,product,name:row.name,sandFill:!!s.roll.sandFill,rollAmount:s.roll.rollAmount,sandAmount:s.roll.sandFill?s.roll.sandAmount:0,qty:row.qty});
+  }
+  if(s.hole&&s.hole.on&&s.hole.count>0){
+    priceHistory.push({id:nid++,date:Date.now(),entryType:'hole',site,product,name:row.name,count:s.hole.count,amount:s.hole.amount,qty:row.qty});
+  }
+}
+function openPriceHistoryModal(){renderPriceHistoryModal();document.getElementById('price-hist-modal').classList.add('show');}
+function closePriceHistoryModal(){document.getElementById('price-hist-modal').classList.remove('show');}
+function delPriceHistory(id){
+  if(!confirm('この単価データを削除しますか？'))return;
+  priceHistory=priceHistory.filter(p=>p.id!==id);
+  saveAll();renderPriceHistoryModal();renderEstPricePanel();
+}
+/* ===== 単価データの集計（見積りページ上部の目安表示・単価データモーダルの平均値に使う共通ヘルパー） ===== */
+function phAvg(list,valueFn){
+  const vals=list.map(valueFn).filter(v=>v!=null&&isFinite(v)&&v>0);
+  if(!vals.length)return{avg:0,n:0};
+  return{avg:Math.round(vals.reduce((s,v)=>s+v,0)/vals.length),n:vals.length};
+}
+function phMaterialEntries(){return priceHistory.filter(p=>(p.entryType||'material')==='material');}
+/* 項目名ごとにグルーピングして平均キロ単価を出す。ST/SUS/ALのように材質が揃っているものは種類別平均で十分だが、
+   「その他」は項目ごとに材質がバラバラなので、同じ項目名同士でしか値上がり確認の意味がない */
+function phGroupMaterialByName(rows){
+  const byName={};
+  rows.forEach(p=>{
+    const nm=p.name||'（項目名なし）';
+    (byName[nm]=byName[nm]||[]).push(p);
+  });
+  return Object.keys(byName).map(nm=>{
+    const list=byName[nm];
+    const kgs=list.map(p=>p.kgPrice||0).filter(Boolean);
+    const avg=kgs.length?Math.round(kgs.reduce((s,v)=>s+v,0)/kgs.length):0;
+    const latest=list.reduce((a,b)=>a.date>b.date?a:b);
+    return{name:nm,n:list.length,avg,latestKgPrice:latest.kgPrice||0,latestDate:latest.date};
+  }).sort((a,b)=>b.n-a.n||b.latestDate-a.latestDate);
+}
+function phAvgKgPriceByType(type){return phAvg(phMaterialEntries().filter(p=>p.type===type),p=>p.kgPrice);}
+function phAvgKgPriceByCut(cutMethod){return phAvg(phMaterialEntries().filter(p=>p.cutMethod===cutMethod),p=>p.kgPrice);}
+function phAvgBend(){return phAvg(priceHistory.filter(p=>p.entryType==='bend'),p=>(p.count>0?p.amount/p.count:null));}
+function phAvgHole(){return phAvg(priceHistory.filter(p=>p.entryType==='hole'),p=>(p.count>0?p.amount/p.count:null));}
+function phAvgRoll(sandFill){return phAvg(priceHistory.filter(p=>p.entryType==='roll'&&!!p.sandFill===sandFill),p=>sandFill?(p.rollAmount+p.sandAmount):p.rollAmount);}
+/* シャーリングとレーザーの、同じ材質グループ内でのキロ単価比（レーザー÷シャーリング）。材質を問わず全体averageで近似する簡易係数 */
+function phShearLaserCoef(){
+  const s=phAvgKgPriceByCut('shearing'),l=phAvgKgPriceByCut('laser');
+  if(!s.avg||!l.avg)return null;
+  return{coef:Math.round((l.avg/s.avg)*100)/100,sN:s.n,lN:l.n,sAvg:s.avg,lAvg:l.avg};
+}
+/* 見積りページ上部：これまでの鋼材追加データから自動集計した「現時点の概算単価目安」を表示する。
+   件数(n)を必ず併記し、データが少ないうちは参考程度と分かるようにする */
+function renderEstPricePanel(){
+  const el=document.getElementById('est-price-panel');if(!el)return;
+  const types=['ST','SUS','AL'].map(t=>({t,...phAvgKgPriceByType(t)})).filter(r=>r.n>0);
+  const bend=phAvgBend(),hole=phAvgHole(),rollPlain=phAvgRoll(false),rollSand=phAvgRoll(true),cut=phShearLaserCoef();
+  const hasAny=types.length||bend.n||hole.n||rollPlain.n||rollSand.n||cut;
+  if(!hasAny){el.innerHTML='';return;}
+  const chip=(label,text,n)=>`<span style="display:inline-flex;align-items:center;gap:3px;background:#fff;border:.5px solid var(--bm);border-radius:5px;padding:3px 8px;font-size:11px;color:var(--tp)"><b style="color:var(--ts);font-weight:600">${escH(label)}</b>${text}<span style="font-size:9px;color:var(--tt)">（n=${n}）</span></span>`;
+  const chips=[];
+  types.forEach(r=>chips.push(chip(r.t,`¥${r.avg.toLocaleString()}/kg`,r.n)));
+  if(bend.n)chips.push(chip('曲げ',`¥${bend.avg.toLocaleString()}/回`,bend.n));
+  if(hole.n)chips.push(chip('穴あけ',`¥${hole.avg.toLocaleString()}/個`,hole.n));
+  if(rollPlain.n)chips.push(chip('ロールのみ',`¥${rollPlain.avg.toLocaleString()}`,rollPlain.n));
+  if(rollSand.n)chips.push(chip('ロール＋砂詰め',`¥${rollSand.avg.toLocaleString()}`,rollSand.n));
+  if(cut)chips.push(chip('レーザー／シャーリング係数',`${cut.coef}倍`,cut.sN+cut.lN));
+  el.innerHTML=`<div style="background:var(--bs);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+    <div style="font-size:10px;font-weight:700;color:var(--ts);margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">
+      現時点の概算単価目安（過去の鋼材追加データから自動集計）
+      <button class="xb" onclick="openPriceHistoryModal()" title="詳しい単価データを見る">📊 詳細</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">${chips.join('')}</div>
+    <div style="font-size:9px;color:var(--tt);margin-top:5px">n＝データ件数。件数が少ないうちは参考程度に見てください。</div>
+  </div>`;
+}
+function renderPriceHistoryModal(){
+  const typeEl=document.getElementById('ph-filter-type');
+  const type=typeEl?typeEl.value:'';
+  const materialRows=phMaterialEntries().filter(p=>!type||p.type===type).sort((a,b)=>b.date-a.date);
+  const bendRows=priceHistory.filter(p=>p.entryType==='bend').sort((a,b)=>b.date-a.date);
+  const rollRows=priceHistory.filter(p=>p.entryType==='roll').sort((a,b)=>b.date-a.date);
+  const holeRows=priceHistory.filter(p=>p.entryType==='hole').sort((a,b)=>b.date-a.date);
+  const el=document.getElementById('price-hist-body');
+  const section=(title,rows,bodyFn)=>rows.length?`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--ts);margin-bottom:3px">${title}（${rows.length}件）</div>${bodyFn(rows)}</div>`:'';
+  let html='';
+  html+=section('材質・キロ単価',materialRows,rows=>{
+    const kgs=rows.map(p=>p.kgPrice||0).filter(Boolean);
+    const avg=kgs.length?Math.round(kgs.reduce((s,v)=>s+v,0)/kgs.length):0;
+    const min=kgs.length?Math.min(...kgs):0,max=kgs.length?Math.max(...kgs):0;
+    const byName=phGroupMaterialByName(rows);
+    const nameChips=byName.length>1?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${byName.map(g=>`<span style="font-size:10px;background:var(--bs);border:.5px solid var(--bm);border-radius:5px;padding:2px 6px">${escH(g.name)}　平均¥${g.avg.toLocaleString()}/kg（n=${g.n}）　最新¥${g.latestKgPrice.toLocaleString()}</span>`).join('')}</div>`:'';
+    return`<div style="font-size:10px;color:var(--ts);margin-bottom:4px">平均 ¥${avg.toLocaleString()}/kg　最小 ¥${min.toLocaleString()}　最大 ¥${max.toLocaleString()}</div>
+    ${nameChips}
+    <table class="tbl" style="margin:0">
+      <thead><tr><th>日付</th><th>種類</th><th>形状／加工</th><th>現場／品名</th><th>項目名</th><th>サイズ</th><th>重量</th><th>円/kg</th><th>総額</th><th></th></tr></thead>
+      <tbody>${rows.map(p=>`<tr>
+        <td style="white-space:nowrap;font-size:10px">${fD(new Date(p.date).toISOString().slice(0,10))}</td>
+        <td style="white-space:nowrap">${escH(p.type)}${p.kind?'　'+escH(p.kind):''}</td>
+        <td style="font-size:10px;white-space:nowrap">${p.formType==='bar'?'鋼材':'板材'}${p.cutMethod?'／'+(p.cutMethod==='laser'?'レーザー':'シャーリング'):''}</td>
+        <td style="font-size:10px">${escH(p.site||'')}${p.product?'／'+escH(p.product):''}</td>
+        <td>${escH(p.name||'')}</td>
+        <td style="font-size:10px;white-space:nowrap">${p.sizeW&&p.sizeL?`${p.sizeW}×${p.sizeL}×t${p.thickness}`:''}</td>
+        <td style="white-space:nowrap">${p.weightKg?p.weightKg.toFixed(2)+'kg':''}</td>
+        <td style="font-weight:700;white-space:nowrap">¥${(p.kgPrice||0).toLocaleString()}</td>
+        <td style="white-space:nowrap">¥${(p.totalQuote||0).toLocaleString()}</td>
+        <td><button class="xb" onclick="delPriceHistory(${p.id})" title="削除">×</button></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  });
+  html+=section('曲げ加工',bendRows,rows=>{
+    const b=phAvgBend();
+    return`<div style="font-size:10px;color:var(--ts);margin-bottom:4px">1回あたり平均 ¥${b.avg.toLocaleString()}</div>
+    <table class="tbl" style="margin:0"><thead><tr><th>日付</th><th>現場／品名</th><th>回数</th><th>金額</th><th>1回あたり</th><th></th></tr></thead>
+    <tbody>${rows.map(p=>`<tr>
+      <td style="white-space:nowrap;font-size:10px">${fD(new Date(p.date).toISOString().slice(0,10))}</td>
+      <td style="font-size:10px">${escH(p.site||'')}${p.product?'／'+escH(p.product):''}</td>
+      <td>${p.count}回</td><td>¥${(p.amount||0).toLocaleString()}</td>
+      <td>¥${p.count>0?Math.round(p.amount/p.count).toLocaleString():0}</td>
+      <td><button class="xb" onclick="delPriceHistory(${p.id})" title="削除">×</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  });
+  html+=section('ロール加工',rollRows,rows=>`<table class="tbl" style="margin:0"><thead><tr><th>日付</th><th>現場／品名</th><th>砂詰め</th><th>ロールのみ</th><th>砂詰め追加</th><th></th></tr></thead>
+    <tbody>${rows.map(p=>`<tr>
+      <td style="white-space:nowrap;font-size:10px">${fD(new Date(p.date).toISOString().slice(0,10))}</td>
+      <td style="font-size:10px">${escH(p.site||'')}${p.product?'／'+escH(p.product):''}</td>
+      <td>${p.sandFill?'あり':'なし'}</td>
+      <td>¥${(p.rollAmount||0).toLocaleString()}</td>
+      <td>${p.sandFill?'¥'+(p.sandAmount||0).toLocaleString():''}</td>
+      <td><button class="xb" onclick="delPriceHistory(${p.id})" title="削除">×</button></td>
+    </tr>`).join('')}</tbody></table>`);
+  html+=section('穴あけ加工',holeRows,rows=>{
+    const h=phAvgHole();
+    return`<div style="font-size:10px;color:var(--ts);margin-bottom:4px">1個あたり平均 ¥${h.avg.toLocaleString()}</div>
+    <table class="tbl" style="margin:0"><thead><tr><th>日付</th><th>現場／品名</th><th>個数</th><th>金額</th><th>1個あたり</th><th></th></tr></thead>
+    <tbody>${rows.map(p=>`<tr>
+      <td style="white-space:nowrap;font-size:10px">${fD(new Date(p.date).toISOString().slice(0,10))}</td>
+      <td style="font-size:10px">${escH(p.site||'')}${p.product?'／'+escH(p.product):''}</td>
+      <td>${p.count}個</td><td>¥${(p.amount||0).toLocaleString()}</td>
+      <td>¥${p.count>0?Math.round(p.amount/p.count).toLocaleString():0}</td>
+      <td><button class="xb" onclick="delPriceHistory(${p.id})" title="削除">×</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  });
+  el.innerHTML=html||'<p class="nd">まだデータがありません（鋼材追加でキロ単価や加工費を記録すると、ここに蓄積されます）</p>';
+}
+/* 見積り項目を「同じ項目名」ごとにグルーピングする（連続していなくても、直前行と同名なら同じグループ扱い） */
+function groupQeQuotes(list){
+  const groups=[];
+  list.forEach((q,i)=>{
+    const nm=q.name||'';
+    const last=groups[groups.length-1];
+    if(nm&&last&&last.name===nm)last.indices.push(i);
+    else groups.push({name:nm,indices:[i]});
+  });
+  return groups;
+}
+/* 単価・個数の変更後、行の小計とグループ計だけを軽量に更新する（入力中にフォーカスが外れないよう全体再描画はしない） */
+function updateQeQuoteField(i,field,val){
+  const q=qeMaterialQuotes[i];if(!q)return;
+  if(field==='unitAmount')q.unitAmount=(Number(val)||0)*1000;
+  else if(field==='qty')q.qty=Math.max(0,Number(val)||0);
+  q.amount=Math.round((q.unitAmount||0)*(q.qty||0));
+  const amtEl=document.getElementById(`qe-row-amt-${i}`);
+  if(amtEl)amtEl.textContent=`＝¥${q.amount.toLocaleString()}`;
+  refreshQeGroupTotals();
+  renderQeCalc();
+}
+function refreshQeGroupTotals(){
+  groupQeQuotes(qeMaterialQuotes).forEach((g,gi)=>{
+    if(g.indices.length<=1)return;
+    const el=document.getElementById(`qe-group-sum-${gi}`);if(!el)return;
+    const gsum=g.indices.reduce((s,i)=>s+(Number(qeMaterialQuotes[i].amount)||0),0);
+    el.textContent=`計　¥${gsum.toLocaleString()}`;
+  });
+}
+/* グループ先頭行の項目名を変更したら、そのグループ内の全行に同じ名前を反映する（グループ判定が崩れないように） */
+function renameQeGroup(gi,newName){
+  const groups=groupQeQuotes(qeMaterialQuotes);
+  const g=groups[gi];if(!g)return;
+  g.indices.forEach(i=>{if(qeMaterialQuotes[i])qeMaterialQuotes[i].name=newName;});
+  renderQeMaterialQuotes();
+}
+/* 鋼材行（.steel）の仕様・キロ単価をひとこと表示する */
+function steelInfoLine(q){
+  if(!q.steel)return'';
+  const s=q.steel;
+  const kindTxt=s.kind?`／${escH(s.kind)}`:'';
+  const formTxt=s.formType==='bar'?'鋼材':'板材';
+  const cutTxt=s.cutMethod?`／${s.cutMethod==='laser'?'レーザー':'シャーリング'}`:'';
+  let base;
+  if(s.mode==='volume'){
+    base=`${escH(s.type)}${kindTxt}　${formTxt}${cutTxt}　${s.sizeW}×${s.sizeL}×t${s.thickness}mm　密度${s.density}　→　${(s.weightKg||0).toFixed(2)}kg　→　¥${(s.kgPrice||0).toLocaleString()}/kg`;
+  }else{
+    base=`${escH(s.type)}　${formTxt}${cutTxt}　${s.weightKg}kg×¥${(s.kgPrice||0).toLocaleString()}/kg`;
+  }
+  const procParts=[];
+  if(s.bend&&s.bend.on)procParts.push(`曲げ${s.bend.count}回¥${(s.bend.amount||0).toLocaleString()}`);
+  if(s.roll&&s.roll.on)procParts.push(`ロール¥${(s.roll.rollAmount||0).toLocaleString()}${s.roll.sandFill?`＋砂詰め¥${(s.roll.sandAmount||0).toLocaleString()}`:''}`);
+  if(s.hole&&s.hole.on)procParts.push(`穴あけ${s.hole.count}個¥${(s.hole.amount||0).toLocaleString()}`);
+  const procTxt=procParts.length?`　｜　${procParts.join('　')}`:'';
+  return`<div style="font-size:9px;color:var(--tt);padding:0 2px 3px">${base}${procTxt}</div>`;
+}
+function renderQeMaterialQuotes(){
+  const el=document.getElementById('qe-material-quotes');
+  if(!qeMaterialQuotes.length){el.innerHTML='<div style="font-size:10px;color:var(--tt);padding:4px 0">見積項目なし</div>';return;}
+  const groups=groupQeQuotes(qeMaterialQuotes);
+  const addBtn=i=>`<button class="pbtn sm" style="background:#EAF3DE;color:#27500A;border:.5px solid #A9CE8C;padding:2px 7px;font-weight:700" onclick="addQeMaterialQuoteRowAfter(${i})" title="同じ項目で、金額・個数だけの行を追加">＋</button>`;
+  const delBtn=i=>`<button class="xb" onclick="qeMaterialQuotes.splice(${i},1);renderQeMaterialQuotes();renderQeCalc()" title="この行を削除">×</button>`;
+  const steelBtn=i=>{
+    const has=!!qeMaterialQuotes[i].steel;
+    return`<button class="xb" style="color:#0F6E56" onclick="openQesModal(${i})" title="${has?'詳細を編集(種類・サイズ・単価・加工など)':'詳細追加(サイズ・体積・加工から単価を計算)'}">${has?'🔩':'📐'}</button>`;
+  };
+  const amountCols=i=>{
+    const q=qeMaterialQuotes[i];
+    const unitDisp=q.unitAmount?Math.round(q.unitAmount/1000*100)/100:'';
+    const qtyDisp=q.qty??1;
+    return`
+        <input type="number" value="${unitDisp}" step="1" min="0" placeholder="例：12" title="単価（千円単位）" oninput="updateQeQuoteField(${i},'unitAmount',this.value)" style="flex:none;width:56px">
+        <span style="font-size:10px;color:var(--ts);white-space:nowrap">千円×</span>
+        <input type="number" value="${qtyDisp}" step="any" min="0" placeholder="1" title="個数（小数も入力可）" oninput="updateQeQuoteField(${i},'qty',this.value)" style="flex:none;width:40px">
+        <span style="font-size:10px;color:var(--ts)">個</span>
+        <span id="qe-row-amt-${i}" style="font-size:10px;color:var(--ts);white-space:nowrap;min-width:64px;text-align:right">＝¥${(q.amount||0).toLocaleString()}</span>
+        ${steelBtn(i)}
+        ${addBtn(i)}
+        ${delBtn(i)}`;
+  };
+  el.innerHTML=groups.map((g,gi)=>{
+    const grouped=g.indices.length>1;
+    const first=g.indices[0];
+    const firstQ=qeMaterialQuotes[first];
+    const firstRow=`
+      <div class="modal-row" style="margin-bottom:2px;gap:3px;align-items:center">
+        <input value="${(firstQ.name||'').replace(/"/g,'&quot;')}" list="dl-ci" placeholder="項目名（例：材料、曲げ、溶接 等）" onchange="renameQeGroup(${gi},this.value)" style="flex:2;min-width:56px">
+        ${amountCols(first)}
+      </div>${steelInfoLine(firstQ)}`;
+    const restRows=grouped?g.indices.slice(1).map(i=>`
+      <div class="modal-row" style="margin-bottom:2px;gap:3px;align-items:center;padding-left:14px">
+        <span style="font-size:11px;color:var(--tt);flex:2;min-width:56px" title="「${(firstQ.name||'').replace(/"/g,'&quot;')}」と同じ項目">↳ 同項目</span>
+        ${amountCols(i)}
+      </div>${steelInfoLine(qeMaterialQuotes[i])}`).join(''):'';
+    const sumHtml=grouped?(()=>{
+      const gsum=g.indices.reduce((s,i)=>s+(Number(qeMaterialQuotes[i].amount)||0),0);
+      return`<div id="qe-group-sum-${gi}" style="font-size:10px;color:var(--tp);font-weight:700;text-align:right;padding-top:2px;border-top:.5px dashed var(--bm)">計　¥${gsum.toLocaleString()}</div>`;
+    })():'';
+    return`<div style="${grouped?'background:var(--bs);border-radius:6px;padding:4px 6px;margin-bottom:4px':'margin-bottom:2px'}">${firstRow}${restRows}${sumHtml}</div>`;
+  }).join('');
+}
+function addQeMaterialQuoteRow(prefillName){qeMaterialQuotes.push({name:prefillName||'',unitAmount:0,qty:1,amount:0});renderQeMaterialQuotes();}
+/* ある行のすぐ下に、同じ項目名で単価・個数だけ空の行を追加する（同一項目を複数行に分けて入力する用） */
+function addQeMaterialQuoteRowAfter(i){
+  const name=(qeMaterialQuotes[i]||{}).name||'';
+  qeMaterialQuotes.splice(i+1,0,{name,unitAmount:0,qty:1,amount:0});
+  renderQeMaterialQuotes();
+}
 function setQeMpDrawing(v){document.getElementById('qe-mp-drawing').value=v;renderQeCalc();}
 function setQeMpProduction(v){document.getElementById('qe-mp-production').value=v;renderQeCalc();}
 function qeMaterialSum(){return qeMaterialQuotes.reduce((s,q)=>s+(Number(q.amount)||0),0);}
@@ -2687,7 +3309,8 @@ function renderQeCalc(){
 function saveQuickEstModal(){
   if(qeItemId==null)return;
   const sum=qeMaterialSum();
-  const mats=qeMaterialQuotes.filter(q=>q.name||q.amount).map(q=>({name:q.name||'',amount:Number(q.amount)||0}));
+  const mats=qeMaterialQuotes.filter(q=>q.name||q.amount).map(q=>({name:q.name||'',unitAmount:Number(q.unitAmount)||0,qty:Number(q.qty)||1,amount:Number(q.amount)||0,steel:q.steel?{...q.steel}:null}));
+  mats.forEach(m=>{if(m.name)uH(null,null,null,m.name);});
   const drawing=Number(document.getElementById('qe-mp-drawing').value)||0;
   const production=Number(document.getElementById('qe-mp-production').value)||0;
   items=items.map(x=>{
@@ -2703,7 +3326,7 @@ function populateEstTplSelect(){
 function saveEstTemplate(){
   const name=prompt('テンプレート名を入力してください（例：ステンレス手すり 標準）');if(!name)return;
   const draft=currentEstDraft();
-  itemTemplates.push({id:nid++,name,materialCost:draft.materialCost,manpowerDrawing:draft.manpowerDrawing,manpowerProduction:draft.manpowerProduction,transportationCost:draft.transportationCost,coefOther:draft.coefOther,itemBreakdown:draft.itemBreakdown,coeffs:draft.coeffs});
+  itemTemplates.push({id:nid++,name,materialCost:draft.materialCost,manpowerDrawing:draft.manpowerDrawing,manpowerProduction:draft.manpowerProduction,transportationCost:draft.transportationCost,coefOther:draft.coefOther,itemBreakdown:draft.itemBreakdown,itemBreakdownMode:draft.itemBreakdownMode,coeffs:draft.coeffs});
   saveAll();populateEstTplSelect();flash('テンプレートを保存しました');
 }
 function loadEstTemplate(){
@@ -2715,7 +3338,7 @@ function loadEstTemplate(){
   document.getElementById('est-transport').value=t.transportationCost?Math.round(t.transportationCost/1000*100)/100:0;
   document.getElementById('est-coef-other').value=t.coefOther||0;
   estBreakdown=(t.itemBreakdown||[]).map(b=>({...b}));
-  renderEstBreakdown();
+  setEstBdMode(t.itemBreakdownMode||'percent');
   populateCoefSelects(t.coeffs||{});
   renderEstCalc();
 }
@@ -3594,6 +4217,7 @@ function renderItems(){
   const estWrap=document.getElementById('item-est-wrap');
   if(progWrap)progWrap.style.display=isEstView?'none':'';
   if(estWrap)estWrap.style.display=isEstView?'':'';
+  renderEstPricePanel();
   const estSectionEl=document.getElementById('item-est-section');
   if(estSectionEl)estSectionEl.innerHTML=renderEstSection(items.filter(x=>x.isEstimate));
   if(isEstView)return;
@@ -3614,7 +4238,11 @@ function renderItems(){
     return ap.localeCompare(bp);
   }));
   let siteOrder=Object.keys(bySite);
-  siteOrder.sort((a,b)=>a.localeCompare(b,'ja'));
+  siteOrder.sort((a,b)=>{
+    const ad=bySite[a].every(isDone)?1:0,bd=bySite[b].every(isDone)?1:0;
+    if(ad!==bd)return ad-bd;
+    return a.localeCompare(b,'ja');
+  });
   document.getElementById('item-groups').innerHTML=siteOrder.map(site=>{
     const siteItems=bySite[site],pending=siteItems.filter(x=>!isDone(x));
     let lastType=null,bodyRows='';
@@ -3658,6 +4286,8 @@ function renderItems(){
         <span style="font-size:10px;color:var(--ts)">現場予定：</span>${siteStHtml}
         ${siteManpowerBadge(site)}
         ${pending.length?`<button class="copy-btn" id="icpbtn-${sid}" onclick="copyItemSite('${site.replace(/'/g,"\\'")}',this)"><i class="ti ti-copy"></i> 発注依頼コピー</button>`:''}
+        <button class="copy-btn" style="border-color:#0F6E56;color:#0F6E56" onclick="completeSiteGroup('${siteEsc}')" title="この現場の製品を全て完了にし、一番下に移動します">✅</button>
+        <button class="copy-btn" style="border-color:#B23A3A;color:#B23A3A" onclick="delSiteGroup('${siteEsc}')" title="この現場の製品と現場予定を全て削除します">🗑️</button>
       </div>
       <div style="overflow-x:auto;border:.5px solid var(--bt);border-radius:0 0 6px 6px;display:${collapsed?'none':'block'}">
         <table class="tbl" style="margin:0">
@@ -3671,6 +4301,44 @@ function renderItems(){
 }
 // 現場メモの各行：長い内容でも見切れないよう、内容に応じて高さを自動で伸ばす
 function autoGrowNoteTA(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+/* 現場ごと全体完了：現場に紐づく未完了の製品を一括で「完了」にし、一覧の並び順を一番下へ送る（renderItemsのsiteOrderソートで判定） */
+function completeSiteGroup(site){
+  const siteItems=items.filter(x=>x.site===site&&!x.isEstimate);
+  const pending=siteItems.filter(x=>!isDone(x));
+  if(!pending.length){flash('この現場の製品はすでに全て完了しています');return;}
+  if(!confirm(`「${site}」の製品${pending.length}件を全て完了にしますか？（一覧の一番下に移動します）`))return;
+  items=items.map(x=>(x.site===site&&!x.isEstimate&&!isDone(x))?{...x,itemStatus:5,updatedAt:Date.now()}:x);
+  itemGroupCollapsed[site]=true;
+  sv('itemGroupCollapsed',itemGroupCollapsed);
+  saveAll();renderItemAlert();renderItems();flash(`「${site}」を全体完了にしました`);
+}
+/* 現場自体の削除：その現場名に紐づく製品（見積り含む全件）と現場予定・現場メモ等を丸ごと削除する */
+function delSiteGroup(site){
+  const relatedItems=items.filter(x=>x.site===site);
+  const relatedSites=sites.filter(s=>s.site===site);
+  if(!relatedItems.length&&!relatedSites.length){flash('この現場のデータが見つかりません');return;}
+  if(!confirm(`「${site}」の製品${relatedItems.length}件・現場予定${relatedSites.length}件を含め、この現場を丸ごと削除しますか？`))return;
+  if(!confirm('本当に削除してよろしいですか？（この操作は取り消せません）'))return;
+  items=items.filter(x=>x.site!==site);
+  sites=sites.filter(s=>s.site!==site);
+  delete siteNotes[site];
+  delete siteWorkTime[site];
+  delete itemGroupCollapsed[site];
+  saveAll();renderItemAlert();renderItems();refreshSiteView();
+  flash(`「${site}」を削除しました`);
+}
+/* 進行中（本工事）の製品を見積りへ差し戻す。convertEstToProgressの逆方向。編集フォームから呼び出す */
+function convertProgressToEst(id){
+  const x=items.find(i=>i.id===id);if(!x)return;
+  const label=x.product||'この項目';
+  if(!confirm(`「${label}」を見積りに戻しますか？（工程日・取付予定などの進行中情報はそのまま残ります）`))return;
+  if(!confirm('本当に見積りに戻してよろしいですか？'))return;
+  items=items.map(i=>i.id===id?{...i,isEstimate:true,updatedAt:Date.now()}:i);
+  editItemId=null;
+  saveAll();renderItemAlert();
+  setIView('est');
+  flash('見積りに戻しました');
+}
 
 function renderItemRow(x){
   const done=isDone(x),w=warnMsgs(x),st=x.itemStatus??0;
@@ -3710,7 +4378,7 @@ function renderItemRow(x){
         </div>
       </td>
       <td><textarea id="ei-${x.id}-memo" rows="4" style="width:100%;min-width:160px;padding:5px 6px;border:.5px solid var(--bm);border-radius:3px;font-size:13px;resize:vertical">${(x.memo||'').replace(/</g,'&lt;')}</textarea></td>
-      <td><button class="pbtn sm" onclick="saveItem(${x.id})">保存</button><br><button class="xb" onclick="editItemId=null;renderItems()">✕</button></td>
+      <td><button class="pbtn sm" onclick="saveItem(${x.id})">保存</button><br><button class="xb" onclick="editItemId=null;renderItems()">✕</button><br><button class="xb" style="margin-top:4px;border-color:#0F6E56;color:#0F6E56" onclick="convertProgressToEst(${x.id})" title="見積りに戻す">↩️</button></td>
     </tr>`;
   }
   const prodRows=Math.min(3,Math.max(1,Math.ceil((x.product||'').length/13)));
@@ -4063,7 +4731,7 @@ function renderEstRow(x,dupColor,mode){
     <td style="min-width:140px">
       <textarea class="mi" rows="${Math.min(4,Math.max(1,Math.ceil((x.privateMemo||'').length/20)))}" placeholder="メモ（自分用・他には表示されません）" oninput="updEstMemo(${x.id},this.value);taGrow(this)" onfocus="taGrow(this)" style="overflow:hidden">${escH(x.privateMemo||'')}</textarea>
     </td>
-    <td style="white-space:nowrap"><button class="xb" onclick="openEstModal(${x.id})" title="簡易見積り">¥</button> <button class="xb" onclick="openQuickEstModal(${x.id})" title="概算見積り（簡易）">⚡</button> <button class="xb" onclick="dupeEstItem(${x.id})" title="複製（品名に「（コピー）」を付けて追加）">⧉</button> <button class="xb" onclick="delItem(${x.id})">×</button></td>
+    <td style="white-space:nowrap"><button class="xb" onclick="openEstModal(${x.id})" title="簡易見積り">¥</button> <button class="xb" onclick="openQuickEstModal(${x.id})" title="概算見積り（簡易）">⚡</button> <button class="xb" style="border-color:#0F6E56;color:#0F6E56" onclick="convertEstToProgress(${x.id})" title="本工事へ移行">🏗️</button> <button class="xb" onclick="dupeEstItem(${x.id})" title="複製（品名に「（コピー）」を付けて追加）">⧉</button> <button class="xb" onclick="delItem(${x.id})">×</button></td>
   </tr>`;
 }
 function updEstField(id,field,v){
@@ -4815,12 +5483,12 @@ function copyFactoryTextMaking(btn){
    取付・完了は対象外（現場管理・完了済みのため）。外注は品名に「（外注）」を添えて各ステータス内に混在。
    至急・期日超過・7日以内は蛍光マーカーで塗ったような帯タグで目立たせ、それ以外は枠や背景色を使わずノイズを抑える。
    余白は最小限にして縦に詰めて表示し、右側の余白にはタスク一覧（未完了・急ぎ／期日順）も表示する。 */
-const FACTORY_BOARD_SECTIONS=[{key:5,label:'製作中',fg:'#8A5A12'},{key:4,label:'手配済み',fg:'#0E6E7C'},{key:1,label:'保留',fg:'#3944B3'},{key:2,label:'調整中',fg:'#A32D6E'},{key:3,label:'確認待ち',fg:'#6B5B0F'},{key:0,label:'未着手',fg:'#6b6b6b'}];
+const FACTORY_BOARD_SECTIONS=[{key:5,label:'製作中',fg:'#8A5A12',bg:'#F5D9B0'},{key:4,label:'手配済み',fg:'#0E6E7C',bg:'#DFF3F5'},{key:1,label:'保留',fg:'#3944B3',bg:'#E2E6FB'},{key:2,label:'調整中',fg:'#A32D6E',bg:'#FBE7F3'},{key:3,label:'確認待ち',fg:'#6B5B0F',bg:'#F3ECC9'},{key:0,label:'未着手',fg:'#6b6b6b',bg:'#F1EFE8'}];
 function escH(s){return(s??'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 /* マーカーでなぞったような帯タグ（tone:'yellow'=至急、'orange'=期日超過・当日・7日以内） */
 function factoryMarkerSpan(text,tone){
   const c=tone==='yellow'?['#FFDE59','#5b3a00']:['#FFB199','#7a1f0d'];
-  return`<span style="background:linear-gradient(100deg,transparent 0%,${c[0]} 6%,${c[0]} 94%,transparent 100%);padding:1px 6px;font-size:10px;font-weight:700;color:${c[1]};white-space:nowrap">${escH(text)}</span>`;
+  return`<span style="background:linear-gradient(100deg,transparent 0%,${c[0]} 6%,${c[0]} 94%,transparent 100%);padding:2px 8px;border-radius:3px;font-size:11px;font-weight:700;color:${c[1]};white-space:nowrap">${escH(text)}</span>`;
 }
 /* 日付キー（processDate、無ければ'_undated'）1つ分の見出しタグ。asap品が混じっていれば日付に関わらず「至急」を優先表示 */
 /* ボード画像専用の残日数計算：工程日より取付予定日／納期（＝installDate）を優先する（工程日は未入力時のみのフォールバック） */
@@ -4834,7 +5502,7 @@ function factoryUrgD(x){
 }
 function factoryDateTagHtml(dateKey,hasAsap){
   if(hasAsap)return factoryMarkerSpan('⚡至急','yellow');
-  if(dateKey==='_undated')return`<span style="font-size:10px;color:#999">日程未定</span>`;
+  if(dateKey==='_undated')return`<span style="font-size:11px;color:#999">日程未定</span>`;
   const d=dif(dateKey);
   // 残り4週間（28日）以内なら、休日を除いた実稼働日数と休日数を添えて工場側が段取りしやすくする（工場用コピペと同じ考え方）
   let workExtra='';
@@ -4845,11 +5513,11 @@ function factoryDateTagHtml(dateKey,hasAsap){
   if(d<0)return factoryMarkerSpan(`${Math.abs(d)}日超過（${fD(dateKey)}）`,'orange');
   if(d===0)return factoryMarkerSpan(`今日（${fD(dateKey)}）${workExtra}`,'orange');
   if(d<=7)return factoryMarkerSpan(`${fD(dateKey)}　残${d}日${workExtra}`,'orange');
-  return`<span style="font-size:10px;color:#999">${fD(dateKey)}　残${d<14?`${d}日`:`${Math.round(d/7)}週`}${workExtra}</span>`;
+  return`<span style="font-size:11px;color:#888">${fD(dateKey)}　残${d<14?`${d}日`:`${Math.round(d/7)}週`}${workExtra}</span>`;
 }
 /* 1ステータス分：現場ごとにまとめ、現場内は日付でグループ化して品名を箇条書きにする（買い出し文のbuildSiteBlocksと同じ考え方） */
 function buildFactoryBoardSection(rows){
-  if(!rows.length)return`<div style="font-size:10px;color:#ccc;padding:2px 0 0 4px">なし</div>`;
+  if(!rows.length)return`<div style="font-size:11px;color:#ccc;padding:2px 0 0 2px">なし</div>`;
   const bySite={};
   rows.forEach(x=>{(bySite[x.site]=bySite[x.site]||[]).push(x);});
   const siteOrder=Object.keys(bySite).sort((a,b)=>{
@@ -4865,27 +5533,27 @@ function buildFactoryBoardSection(rows){
     const groupsHtml=orderedKeys.map(k=>{
       const gi=byDate[k];
       const tagHtml=factoryDateTagHtml(k,gi.some(x=>x.asap));
-      const itemsHtml=gi.map(x=>`<div style="font-size:10px;color:#444;margin-left:10px">・${escH(x.product||'')}${x.type==='外注'?'（外注）':''}${x.outsourceConfirming?'<span style="color:#0E6E7C;font-weight:700"> 外注確認中</span>':''}${x.memo?`<span style="color:#999"> →${escH(x.memo)}</span>`:''}</div>`).join('');
-      return`<div style="margin:2px 0 1px 4px">${tagHtml}</div>${itemsHtml}`;
+      const itemsHtml=gi.map(x=>`<div style="font-size:11.5px;line-height:1.5;color:#333;margin:0 0 3px 13px">・${escH(x.product||'')}${x.type==='外注'?'（外注）':''}${x.outsourceConfirming?'<span style="color:#0E6E7C;font-weight:700"> 外注確認中</span>':''}${x.memo?`<span style="color:#999;font-style:italic"> →${escH(x.memo)}</span>`:''}</div>`).join('');
+      return`<div style="margin:3px 0 2px 2px">${tagHtml}</div>${itemsHtml}`;
     }).join('');
-    return`<div style="margin-top:${i===0?'4':'5'}px">
-      <div style="font-size:11px;font-weight:600;color:#333">${escH(site||'—')}</div>
+    return`<div style="margin-top:${i===0?'0':'11'}px">
+      <div style="font-size:12.5px;font-weight:700;color:#222;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:3px;margin-bottom:2px">${escH(site||'—')}</div>
       ${groupsHtml}
     </div>`;
   }).join('');
 }
 /* 中央列：取付ステータス（6）の項目を現場でまとめず、予定日（＝installDate、無ければ工程日）だけでグループ化して表示する */
 function buildFactoryInstallColumn(rows){
-  if(!rows.length)return`<div style="font-size:10px;color:#ccc">なし</div>`;
+  if(!rows.length)return`<div style="font-size:11px;color:#ccc">なし</div>`;
   const byDate={};
   rows.forEach(x=>{const k=x.installDate||x.processDate||'_undated';(byDate[k]=byDate[k]||[]).push(x);});
   const dateKeys=Object.keys(byDate).filter(k=>k!=='_undated').sort();
   const orderedKeys=byDate['_undated']?[...dateKeys,'_undated']:dateKeys;
-  return orderedKeys.map(k=>{
+  return orderedKeys.map((k,i)=>{
     const gi=byDate[k];
     const tagHtml=factoryDateTagHtml(k,gi.some(x=>x.asap));
-    const itemsHtml=gi.map(x=>`<div style="font-size:10px;color:#444;margin:0 0 3px 4px">・${escH(x.product||'')}${x.type==='外注'?'（外注）':''}${x.outsourceConfirming?'<span style="color:#0E6E7C;font-weight:700"> 外注確認中</span>':''}<div style="font-size:9px;color:#999;margin-left:11px">${escH(x.site||'')}</div></div>`).join('');
-    return`<div style="margin:4px 0 1px 0">${tagHtml}</div>${itemsHtml}`;
+    const itemsHtml=gi.map(x=>`<div style="font-size:11.5px;line-height:1.45;color:#333;margin:0 0 5px 2px">・${escH(x.product||'')}${x.type==='外注'?'（外注）':''}${x.outsourceConfirming?'<span style="color:#0E6E7C;font-weight:700"> 外注確認中</span>':''}<div style="font-size:10px;color:#999;margin-left:13px">${escH(x.site||'')}</div></div>`).join('');
+    return`<div style="margin:${i===0?'0':'8'}px 0 3px 0">${tagHtml}</div>${itemsHtml}`;
   }).join('');
 }
 function buildFactoryBoardHtml(){
@@ -4898,15 +5566,18 @@ function buildFactoryBoardHtml(){
     const normalRows=rows.filter(x=>!x.deliveryOnly),deliveryRows=rows.filter(x=>x.deliveryOnly);
     let bodyHtml=buildFactoryBoardSection(normalRows);
     if(deliveryRows.length){
-      bodyHtml+=`<div style="font-size:10px;font-weight:700;color:#0F6E56;margin:5px 0 1px 4px">📦 納品のみ<span style="color:#bbb;font-weight:400;margin-left:4px">${deliveryRows.length}件</span></div>${buildFactoryBoardSection(deliveryRows)}`;
+      bodyHtml+=`<div style="font-size:11px;font-weight:700;color:#0F6E56;border-top:1px dashed #ddd;padding-top:7px;margin:9px 0 3px 2px">📦 納品のみ<span style="color:#bbb;font-weight:400;margin-left:4px">${deliveryRows.length}件</span></div>${buildFactoryBoardSection(deliveryRows)}`;
     }
-    return`<div style="border-left:4px solid ${s.fg};padding-left:8px;margin-bottom:7px">
-      <div style="font-size:11px;font-weight:700;color:${s.fg}">${s.label}<span style="color:#bbb;font-weight:400;margin-left:4px">${rows.length}件</span></div>
-      ${bodyHtml}
+    return`<div style="background:${s.bg};border-radius:10px;padding:9px 11px;margin-bottom:11px">
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
+        <span style="font-size:13px;font-weight:700;color:${s.fg}">${s.label}</span>
+        <span style="font-size:10.5px;color:${s.fg};opacity:.7;font-weight:600">${rows.length}件</span>
+      </div>
+      <div style="background:#fff;border-radius:8px;padding:9px 11px">${bodyHtml}</div>
     </div>`;
   }).join('');
   const activeTasks=[...tasks].filter(t=>!t.done).sort((a,b)=>taskUrgD(a)-taskUrgD(b));
-  const tasksHtml=activeTasks.length?activeTasks.map(t=>{
+  const tasksHtml=activeTasks.length?activeTasks.map((t,i)=>{
     let tagHtml='';
     if(t.urgent)tagHtml=factoryMarkerSpan('急ぎ','yellow');
     else if(t.due){
@@ -4914,28 +5585,34 @@ function buildFactoryBoardHtml(){
       if(d<0)tagHtml=factoryMarkerSpan(`${Math.abs(d)}日超過（${fD(t.due)}）`,'orange');
       else if(d===0)tagHtml=factoryMarkerSpan(`今日（${fD(t.due)}）`,'orange');
       else if(d<=7)tagHtml=factoryMarkerSpan(`${fD(t.due)}　残${d}日`,'orange');
-      else tagHtml=`<span style="font-size:9px;color:#999">${fD(t.due)}</span>`;
+      else tagHtml=`<span style="font-size:10px;color:#888">${fD(t.due)}</span>`;
     }
-    return`<div style="margin-bottom:5px">
-      ${tagHtml?`<div style="margin-bottom:2px">${tagHtml}</div>`:''}
-      <div style="font-size:10px;color:#333">${escH(t.text||'')}</div>
-      ${t.site?`<div style="font-size:9px;color:#999;margin-top:1px">${escH(t.site)}</div>`:''}
+    return`<div style="margin:${i===0?'0':'9'}px 0 0 0;padding-top:${i===0?'0':'8'}px;${i===0?'':'border-top:1px solid rgba(0,0,0,.06)'}">
+      ${tagHtml?`<div style="margin-bottom:3px">${tagHtml}</div>`:''}
+      <div style="font-size:11.5px;line-height:1.45;color:#333">${escH(t.text||'')}</div>
+      ${t.site?`<div style="font-size:10px;color:#999;margin-top:1px">${escH(t.site)}</div>`:''}
     </div>`;
-  }).join(''):`<div style="font-size:10px;color:#ccc">タスクなし</div>`;
-  return`<div style="font-family:-apple-system,'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif;background:#fff;padding:14px;width:1180px;box-sizing:border-box">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;border-bottom:1.5px solid #333;padding-bottom:5px">
-      <div style="font-size:15px;font-weight:700;color:#222">${mmdd}進捗ボード</div>
-      <div style="font-size:10px;color:#999">全${relevant.length}件</div>
+  }).join(''):`<div style="font-size:11px;color:#ccc">タスクなし</div>`;
+  return`<div style="font-family:-apple-system,'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif;background:#fff;padding:22px;width:1220px;box-sizing:border-box">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;border-bottom:2px solid #222;padding-bottom:7px">
+      <div style="font-size:19px;font-weight:700;color:#222">${mmdd}進捗ボード</div>
+      <div style="font-size:11px;color:#999">全${relevant.length}件</div>
     </div>
-    <div style="display:flex;gap:14px">
+    <div style="display:flex;gap:16px;align-items:flex-start">
       <div style="flex:1;min-width:0">${sectionsHtml}</div>
-      <div style="width:230px;flex-shrink:0;border-left:1px solid #eee;padding-left:12px">
-        <div style="font-size:11px;font-weight:700;color:#A83A17;margin-bottom:6px">🔧 取付<span style="color:#bbb;font-weight:400;margin-left:4px">${installRows.length}件</span></div>
-        ${buildFactoryInstallColumn(installRows)}
+      <div style="width:250px;flex-shrink:0;background:#FCDDD3;border-radius:10px;padding:9px 11px">
+        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
+          <span style="font-size:13px;font-weight:700;color:#A83A17">🔧 取付</span>
+          <span style="font-size:10.5px;color:#A83A17;opacity:.7;font-weight:600">${installRows.length}件</span>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${buildFactoryInstallColumn(installRows)}</div>
       </div>
-      <div style="width:220px;flex-shrink:0;border-left:1px solid #eee;padding-left:12px">
-        <div style="font-size:11px;font-weight:700;color:#444;margin-bottom:6px">タスク<span style="color:#bbb;font-weight:400;margin-left:4px">${activeTasks.length}件</span></div>
-        ${tasksHtml}
+      <div style="width:230px;flex-shrink:0;background:#EEEEEA;border-radius:10px;padding:9px 11px">
+        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
+          <span style="font-size:13px;font-weight:700;color:#444">タスク</span>
+          <span style="font-size:10.5px;color:#444;opacity:.7;font-weight:600">${activeTasks.length}件</span>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${tasksHtml}</div>
       </div>
     </div>
   </div>`;
@@ -4943,7 +5620,7 @@ function buildFactoryBoardHtml(){
 /* ダッシュ上部・製品一覧タブの両方に同じ機能のボタンがあるため、押されたボタン自身(btn)を受け取って更新する */
 function copyFactoryImage(btn){
   btn=btn||document.getElementById('factory-copy-btn');
-  const relevant=items.filter(x=>{const st=x.itemStatus??0;return st<=5&&!x.isEstimate;});
+  const relevant=items.filter(x=>{const st=x.itemStatus??0;return st<=6&&!x.isEstimate;});
   const activeTasks=tasks.filter(t=>!t.done);
   if(!relevant.length&&!activeTasks.length){alert('対象の製品・タスクなし');return;}
   if(typeof html2canvas==='undefined'){flash('画像化ライブラリを読み込めませんでした（通信環境をご確認ください）');return;}
