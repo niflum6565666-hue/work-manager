@@ -34,6 +34,16 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
   #p-dash .wrap>div:has(>.pipe){grid-column:1/-1}
   #p-dash .wrap>div:has(>#urg){grid-column:1;grid-row:span 3}
 }
+/* 見積り一覧の表（記号・品名・サイズ・仕上げ・数量・施工人数×日数・規格詳細・メモ）：
+   幅が狭い画面（iPad等）では横スクロールなしで見られるよう、1行1カードのスタック表示に切り替える。
+   列見出し(theadCols)は非表示にし、各セルの左側にdata-label属性の値をラベルとして出す */
+@media (max-width:1000px){
+  .est-tbl-wrap thead{display:none}
+  .est-tbl-wrap table,.est-tbl-wrap tbody,.est-tbl-wrap tr,.est-tbl-wrap td{display:block;width:100%}
+  .est-tbl-wrap tr{border:.5px solid var(--bt);border-radius:8px;margin:6px 0;padding:6px;background:var(--bp)}
+  .est-tbl-wrap td{border-bottom:none;padding:3px 2px;display:flex;align-items:flex-start;gap:6px}
+  .est-tbl-wrap td[data-label]::before{content:attr(data-label);flex:0 0 76px;font-size:9px;color:var(--ts);font-weight:600;padding-top:5px;white-space:nowrap}
+}
 .ar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:.125rem 0}
 .ar input,.ar select{padding:5px 7px;border:.5px solid var(--bm);border-radius:5px;font-size:11px;background:var(--bs);color:var(--tp);min-width:0}
 .ar input:focus,.ar select:focus{outline:none;border-color:#888}
@@ -4649,7 +4659,7 @@ function renderEstSection(estItems){
         <button class="copy-btn" style="border-color:#0F6E56;color:#0F6E56" onclick="convertSiteEstToProgress('${siteEsc}')" title="この現場の見積りをまとめて進行中に移行"><i class="ti ti-arrow-right"></i> 現場ごと進行中へ</button>
       </div>
       ${finishKeys.length?`<div style="font-size:10px;color:var(--ts);padding:3px 4px 5px;display:${collapsed?'none':'block'}" title="項目ごとに塗装㎡（入力あれば優先）またはサイズ㎡（㎡を計算するチェック時）を仕上げ別に合算">仕上げ別㎡合計：${finishKeys.map(k=>`<span style="margin-right:12px"><b style="color:var(--tp)">${escH(k)}</b> ${finishAgg[k].toFixed(2)}㎡</span>`).join('')}</div>`:''}
-      <div style="overflow-x:auto;border:.5px solid var(--bt);border-radius:0 0 6px 6px;display:${collapsed?'none':'block'}">
+      <div class="est-tbl-wrap" style="overflow-x:auto;border:.5px solid var(--bt);border-radius:0 0 6px 6px;display:${collapsed?'none':'block'}">
         <table class="tbl" style="margin:0">
           <thead><tr>${theadCols}</tr></thead>
           <tbody>${bodyRows}</tbody>
@@ -4702,7 +4712,7 @@ function renderEstRow(x,dupColor,mode){
   const statusColor=EST_STATUS_COLORS[status];
   const statusTitle={white:'未着手',blue:'仮チェック済み',orange:'概算入力途中',green:'見積り金額入力済み'}[status];
   /* 'name'=通常一覧（行に記号の直接入力あり／名称列なし）　'plain'=記号順（記号・名称ともに見出しでまとめ済みなので行には出さない） */
-  const symbolCol=mode==='name'?`<td style="white-space:nowrap;text-align:center">
+  const symbolCol=mode==='name'?`<td data-label="記号" style="white-space:nowrap;text-align:center">
       <button class="xb" onclick="stepEstSymbol(${x.id},-1)">−</button>
       <input value="${esc(x.estSymbol)}" onchange="updEstField(${x.id},'estSymbol',this.value)" placeholder="記号" style="width:32px;padding:4px 2px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;text-align:center;font-weight:700;background:#fff">
       <button class="xb" onclick="stepEstSymbol(${x.id},1)">＋</button>
@@ -4712,26 +4722,26 @@ function renderEstRow(x,dupColor,mode){
   return`<tr${rowBg?` style="background:${rowBg}"`:''}>
     ${symbolCol}
     ${nameCol}
-    <td><div style="display:flex;align-items:center;gap:1px"><button class="xb" onclick="toggleEstTentativeCheck(${x.id})" title="仮チェック（クリックで切り替え）：${statusTitle}">${x.tentativeCheck?'☑':'☐'}</button><input list="dl-p" value="${esc(x.product)}" onchange="updEstField(${x.id},'product',this.value)" style="width:100px;padding:4px 5px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;background:#fff">${cpBtns('product')}${(x.product||'').includes('（コピー）')?`<button class="xb" style="color:#D9420C;border-color:#D9420C" onclick="removeEstCopySuffix(${x.id})" title="「（コピー）」を削除">×</button>`:''}${dupBadge}</div></td>
-    <td><div style="display:flex;align-items:center;gap:1px"><input value="${esc(x.size)}" onchange="updEstField(${x.id},'size',this.value)" style="width:150px;padding:4px 5px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;background:#fff">${cpBtns('size')}</div></td>
-    <td><div style="display:flex;align-items:center;gap:1px"><input list="dl-f" value="${esc(x.finish)}" onchange="updEstField(${x.id},'finish',this.value)" style="width:120px;padding:4px 5px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;background:#fff">${cpBtns('finish')}</div></td>
-    <td style="white-space:nowrap;text-align:center">
+    <td data-label="品名"><div style="display:flex;align-items:center;gap:1px"><button class="xb" onclick="toggleEstTentativeCheck(${x.id})" title="仮チェック（クリックで切り替え）：${statusTitle}">${x.tentativeCheck?'☑':'☐'}</button><input list="dl-p" value="${esc(x.product)}" onchange="updEstField(${x.id},'product',this.value)" style="width:100px;padding:4px 5px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;background:#fff">${cpBtns('product')}${(x.product||'').includes('（コピー）')?`<button class="xb" style="color:#D9420C;border-color:#D9420C" onclick="removeEstCopySuffix(${x.id})" title="「（コピー）」を削除">×</button>`:''}${dupBadge}</div></td>
+    <td data-label="サイズ"><div style="display:flex;align-items:center;gap:1px"><input value="${esc(x.size)}" onchange="updEstField(${x.id},'size',this.value)" style="width:150px;padding:4px 5px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;background:#fff">${cpBtns('size')}</div></td>
+    <td data-label="仕上げ"><div style="display:flex;align-items:center;gap:1px"><input list="dl-f" value="${esc(x.finish)}" onchange="updEstField(${x.id},'finish',this.value)" style="width:120px;padding:4px 5px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;background:#fff">${cpBtns('finish')}</div></td>
+    <td data-label="数量" style="white-space:nowrap;text-align:center">
       <input type="number" min="1" value="${x.qty||1}" onchange="updEstField(${x.id},'qty',this.value)" style="width:42px;padding:4px 2px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;text-align:center">
     </td>
-    <td style="white-space:nowrap;text-align:center">
+    <td data-label="施工人数×日数" style="white-space:nowrap;text-align:center">
       <input type="number" step="0.5" min="0" value="${x.installManpower||''}" placeholder="0" onchange="updItemManpower(${x.id},this.value)" style="width:38px;padding:4px 2px;border:.5px solid var(--bm);border-radius:3px;font-size:11px;text-align:center" title="施工想定人数（0.5人単位）">
       <span style="font-size:10px;color:var(--ts)">人×</span>
       <input type="number" step="1" min="1" value="${x.installDays||1}" onchange="updItemDays(${x.id},this.value)" style="width:28px;padding:4px 2px;border:.5px solid var(--bt);border-radius:3px;font-size:11px;text-align:center" title="施工日数">
       <span style="font-size:10px;color:var(--ts)">日</span>
     </td>
-    <td style="max-width:220px">
+    <td data-label="規格詳細" style="max-width:220px">
       <button class="xb" onclick="openEstSpecModal(${x.id})" title="材質・加工・留め方などの詳細">${specText?'詳細 ✓':'詳細'}</button>
       ${specText?`<div style="margin-top:3px;font-size:10px;color:var(--ts);line-height:1.4">${escH(specText)}</div>`:''}
     </td>
-    <td style="min-width:140px">
+    <td data-label="メモ" style="min-width:140px">
       <textarea class="mi" rows="${Math.min(4,Math.max(1,Math.ceil((x.privateMemo||'').length/20)))}" placeholder="メモ（自分用・他には表示されません）" oninput="updEstMemo(${x.id},this.value);taGrow(this)" onfocus="taGrow(this)" style="overflow:hidden">${escH(x.privateMemo||'')}</textarea>
     </td>
-    <td style="white-space:nowrap"><button class="xb" onclick="openEstModal(${x.id})" title="簡易見積り">¥</button> <button class="xb" onclick="openQuickEstModal(${x.id})" title="概算見積り（簡易）">⚡</button> <button class="xb" style="border-color:#0F6E56;color:#0F6E56" onclick="convertEstToProgress(${x.id})" title="本工事へ移行">🏗️</button> <button class="xb" onclick="dupeEstItem(${x.id})" title="複製（品名に「（コピー）」を付けて追加）">⧉</button> <button class="xb" onclick="delItem(${x.id})">×</button></td>
+    <td data-label="操作" style="white-space:nowrap"><button class="xb" onclick="openEstModal(${x.id})" title="簡易見積り">¥</button> <button class="xb" onclick="openQuickEstModal(${x.id})" title="概算見積り（簡易）">⚡</button> <button class="xb" style="border-color:#0F6E56;color:#0F6E56" onclick="convertEstToProgress(${x.id})" title="本工事へ移行">🏗️</button> <button class="xb" onclick="dupeEstItem(${x.id})" title="複製（品名に「（コピー）」を付けて追加）">⧉</button> <button class="xb" onclick="delItem(${x.id})">×</button></td>
   </tr>`;
 }
 function updEstField(id,field,v){
