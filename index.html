@@ -4317,7 +4317,7 @@ function completeSiteGroup(site){
   const pending=siteItems.filter(x=>!isDone(x));
   if(!pending.length){flash('この現場の製品はすでに全て完了しています');return;}
   if(!confirm(`「${site}」の製品${pending.length}件を全て完了にしますか？（一覧の一番下に移動します）`))return;
-  items=items.map(x=>(x.site===site&&!x.isEstimate&&!isDone(x))?{...x,itemStatus:5,updatedAt:Date.now()}:x);
+  items=items.map(x=>(x.site===site&&!x.isEstimate&&!isDone(x))?{...x,itemStatus:7,updatedAt:Date.now()}:x);
   itemGroupCollapsed[site]=true;
   sv('itemGroupCollapsed',itemGroupCollapsed);
   saveAll();renderItemAlert();renderItems();flash(`「${site}」を全体完了にしました`);
@@ -5566,6 +5566,23 @@ function buildFactoryInstallColumn(rows){
     return`<div style="margin:${i===0?'0':'8'}px 0 3px 0">${tagHtml}</div>${itemsHtml}`;
   }).join('');
 }
+/* 右下：全ステータス横断の日程一覧（日付→現場→品名の順で並べ、現場名が直前行と同じ場合は重複表示しない） */
+function buildFactorySchedule(rows){
+  const dated=rows.filter(x=>(x.installDate||x.processDate));
+  if(!dated.length)return`<div style="font-size:11px;color:#ccc">なし</div>`;
+  const list=dated.map(x=>({date:x.installDate||x.processDate,site:x.site||'—',name:x.product||''}))
+    .sort((a,b)=>a.date.localeCompare(b.date)||a.site.localeCompare(b.site,'ja')||a.name.localeCompare(b.name,'ja'));
+  let lastSite=null;
+  return list.map((r,i)=>{
+    const showSite=r.site!==lastSite;
+    lastSite=r.site;
+    return`<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;${i===0?'':'border-top:1px solid rgba(0,0,0,.05)'}">
+      <div style="width:60px;flex-shrink:0;font-size:10px;color:#888;white-space:nowrap">${fD(r.date)}</div>
+      <div style="width:66px;flex-shrink:0;font-size:10px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${showSite?escH(r.site):''}</div>
+      <div style="flex:1;min-width:0;font-size:10px;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(r.name)}</div>
+    </div>`;
+  }).join('');
+}
 function buildFactoryBoardHtml(){
   const relevant=items.filter(x=>{const st=x.itemStatus??0;return st<=6&&!x.isEstimate;});
   const today=new Date(),mmdd=`${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
@@ -5603,6 +5620,7 @@ function buildFactoryBoardHtml(){
       ${t.site?`<div style="font-size:10px;color:#999;margin-top:1px">${escH(t.site)}</div>`:''}
     </div>`;
   }).join(''):`<div style="font-size:11px;color:#ccc">タスクなし</div>`;
+  const scheduleHtml=buildFactorySchedule(relevant);
   return`<div style="font-family:-apple-system,'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif;background:#fff;padding:22px;width:1220px;box-sizing:border-box">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;border-bottom:2px solid #222;padding-bottom:7px">
       <div style="font-size:19px;font-weight:700;color:#222">${mmdd}進捗ボード</div>
@@ -5617,12 +5635,20 @@ function buildFactoryBoardHtml(){
         </div>
         <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${buildFactoryInstallColumn(installRows)}</div>
       </div>
-      <div style="width:230px;flex-shrink:0;background:#EEEEEA;border-radius:10px;padding:9px 11px">
-        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
-          <span style="font-size:13px;font-weight:700;color:#444">タスク</span>
-          <span style="font-size:10.5px;color:#444;opacity:.7;font-weight:600">${activeTasks.length}件</span>
+      <div style="width:230px;flex-shrink:0;display:flex;flex-direction:column;gap:14px">
+        <div style="background:#EEEEEA;border-radius:10px;padding:9px 11px">
+          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
+            <span style="font-size:13px;font-weight:700;color:#444">タスク</span>
+            <span style="font-size:10.5px;color:#444;opacity:.7;font-weight:600">${activeTasks.length}件</span>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${tasksHtml}</div>
         </div>
-        <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${tasksHtml}</div>
+        <div style="background:#E4E9F5;border-radius:10px;padding:9px 11px">
+          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
+            <span style="font-size:13px;font-weight:700;color:#3A4E8C">📅 日程一覧</span>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${scheduleHtml}</div>
+        </div>
       </div>
     </div>
   </div>`;
