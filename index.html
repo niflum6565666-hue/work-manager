@@ -5572,14 +5572,15 @@ function buildFactorySchedule(rows){
   if(!dated.length)return`<div style="font-size:11px;color:#ccc">なし</div>`;
   const list=dated.map(x=>({date:x.installDate||x.processDate,site:x.site||'—',name:x.product||''}))
     .sort((a,b)=>a.date.localeCompare(b.date)||a.site.localeCompare(b.site,'ja')||a.name.localeCompare(b.name,'ja'));
-  let lastSite=null;
+  let lastDate=null,lastSite=null;
   return list.map((r,i)=>{
-    const showSite=r.site!==lastSite;
-    lastSite=r.site;
-    return`<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;${i===0?'':'border-top:1px solid rgba(0,0,0,.05)'}">
-      <div style="width:60px;flex-shrink:0;font-size:10px;color:#888;white-space:nowrap">${fD(r.date)}</div>
-      <div style="width:66px;flex-shrink:0;font-size:10px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${showSite?escH(r.site):''}</div>
-      <div style="flex:1;min-width:0;font-size:10px;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(r.name)}</div>
+    const showDate=r.date!==lastDate;
+    const showSite=showDate||r.site!==lastSite;
+    lastDate=r.date;lastSite=r.site;
+    return`<div style="display:flex;gap:8px;padding:4px 0;${i===0?'':'border-top:1px solid rgba(0,0,0,.05)'}">
+      <div style="width:58px;flex-shrink:0;font-size:10.5px;color:#888;white-space:nowrap;padding-top:1px">${showDate?fD(r.date):''}</div>
+      <div style="width:82px;flex-shrink:0;font-size:10.5px;font-weight:600;color:#333;line-height:1.4">${showSite?escH(r.site):''}</div>
+      <div style="flex:1;min-width:0;font-size:10.5px;color:#444;line-height:1.4;word-break:break-all">${escH(r.name)}</div>
     </div>`;
   }).join('');
 }
@@ -5628,20 +5629,22 @@ function buildFactoryBoardHtml(){
     </div>
     <div style="display:flex;gap:16px;align-items:flex-start">
       <div style="flex:1;min-width:0">${sectionsHtml}</div>
-      <div style="width:250px;flex-shrink:0;background:#FCDDD3;border-radius:10px;padding:9px 11px">
-        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
-          <span style="font-size:13px;font-weight:700;color:#A83A17">🔧 取付</span>
-          <span style="font-size:10.5px;color:#A83A17;opacity:.7;font-weight:600">${installRows.length}件</span>
-        </div>
-        <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${buildFactoryInstallColumn(installRows)}</div>
-      </div>
-      <div style="width:230px;flex-shrink:0;display:flex;flex-direction:column;gap:14px">
-        <div style="background:#EEEEEA;border-radius:10px;padding:9px 11px">
-          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
-            <span style="font-size:13px;font-weight:700;color:#444">タスク</span>
-            <span style="font-size:10.5px;color:#444;opacity:.7;font-weight:600">${activeTasks.length}件</span>
+      <div style="width:496px;flex-shrink:0;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;gap:16px">
+          <div style="width:250px;flex-shrink:0;background:#FCDDD3;border-radius:10px;padding:9px 11px">
+            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
+              <span style="font-size:13px;font-weight:700;color:#A83A17">🔧 取付</span>
+              <span style="font-size:10.5px;color:#A83A17;opacity:.7;font-weight:600">${installRows.length}件</span>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${buildFactoryInstallColumn(installRows)}</div>
           </div>
-          <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${tasksHtml}</div>
+          <div style="width:230px;flex-shrink:0;background:#EEEEEA;border-radius:10px;padding:9px 11px">
+            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
+              <span style="font-size:13px;font-weight:700;color:#444">タスク</span>
+              <span style="font-size:10.5px;color:#444;opacity:.7;font-weight:600">${activeTasks.length}件</span>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:9px 11px;min-height:36px">${tasksHtml}</div>
+          </div>
         </div>
         <div style="background:#E4E9F5;border-radius:10px;padding:9px 11px">
           <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:7px">
