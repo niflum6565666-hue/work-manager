@@ -1382,14 +1382,22 @@ function siteManpowerBadge(site){
   }
   return`<span class="mp-ok" title="想定人数×施工日数の合計と、「確認済」の現場予定の人数×日数の合計を比較（現場単位・具体的な日付のズレは考慮しません）">人数OK 想定${want}人日・確保${have}人日</span>`;
 }
-/* 日程単位（取付予定日〜+施工日数の期間が現場予定の期間と重なる製品だけを集計）の照合バッジ。両側とも人日（人数×日数）で比較する */
+/* 日程単位（取付予定日〜+施工日数の期間が現場予定の期間と重なる製品だけを集計）の照合バッジ。両側とも人日（人数×日数）で比較する
+   ※製品の想定人日は「重なっている日数」だけを按分して計上する。フル日数のまま数えると、同じ製品が複数の現場予定（日程が前後で分かれている等）に
+     またがって重なった場合に、その製品の想定人日が現場予定の件数ぶん二重・三重に計上されてしまうため */
 function scheduleManpowerBadge(s){
-  const end=s.dateEnd||s.dateStart;
+  const start=s.dateStart,end=s.dateEnd||s.dateStart;
   const want=items.filter(x=>{
     if(x.site!==s.site||isDone(x)||!x.installDate)return false;
     const iEnd=addDaysStr(x.installDate,(Number(x.installDays)||1)-1);
-    return x.installDate<=end&&iEnd>=s.dateStart;
-  }).reduce((sum,x)=>sum+(Number(x.installManpower)||0)*(Number(x.installDays)||1),0);
+    return x.installDate<=end&&iEnd>=start;
+  }).reduce((sum,x)=>{
+    const iEnd=addDaysStr(x.installDate,(Number(x.installDays)||1)-1);
+    const overlapStart=x.installDate>start?x.installDate:start;
+    const overlapEnd=iEnd<end?iEnd:end;
+    const overlapDays=Math.round((new Date(overlapEnd+'T00:00:00')-new Date(overlapStart+'T00:00:00'))/86400000)+1;
+    return sum+(Number(x.installManpower)||0)*Math.max(0,overlapDays);
+  },0);
   const wantR=Math.round(want*10)/10;
   if(!wantR)return'';
   const capacity=Math.round(siteCapacityCount(s)*siteCapacityDays(s)*10)/10;
@@ -3386,7 +3394,7 @@ if(!items){
   ];
 }
 // 既存 items に不足フィールドを補完
-items=items.map(x=>{const s=x.itemStatus!=null?x.itemStatus:((x.installStatus===2&&(x.makeStatus===2||x.type==='外注')&&x.arrStatus===2)?5:x.installStatus===1?4:x.makeStatus===2?3:(x.makeStatus===1||x.arrStatus===1)?2:x.waitingDrawing?1:0);return{type:'自社',installStatus:0,makeStatus:x.makeStatus??0,arrStatus:x.arrStatus??0,clientDeadline:x.clientDeadline||'',orderLimit:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,inProgress:false,delivered:false,notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower:0,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',isEstimate:false,estName:'',size:'',finish:'',qty:1,cornerCount:0,jointCount:0,materials:[],materialOther:'',thickness:'',steelSpecs:[],steelSpecItems:[],specNotes:[],estSymbol:'',sizeMode:'free',sizeW:0,sizeH:0,sizeD:0,sizeL:0,qtyUnit:'count',sizeCalcEnabled:false,paintItems:[],privateMemo:'',tentativeCheck:false,processing:[],paintColorBake:'',paintColorClear:'',fasteners:[],...x,itemStatus:s};});
+items=items.map(x=>{const s=x.itemStatus!=null?x.itemStatus:((x.installStatus===2&&(x.makeStatus===2||x.type==='外注')&&x.arrStatus===2)?5:x.installStatus===1?4:x.makeStatus===2?3:(x.makeStatus===1||x.arrStatus===1)?2:x.waitingDrawing?1:0);return{type:'自社',installStatus:0,makeStatus:x.makeStatus??0,arrStatus:x.arrStatus??0,clientDeadline:x.clientDeadline||'',orderLimit:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,inProgress:false,delivered:false,notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,productionOk:false,partialOk:false,installManpower:0,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',isEstimate:false,estName:'',size:'',finish:'',qty:1,cornerCount:0,jointCount:0,materials:[],materialOther:'',thickness:'',steelSpecs:[],steelSpecItems:[],specNotes:[],estSymbol:'',sizeMode:'free',sizeW:0,sizeH:0,sizeD:0,sizeL:0,qtyUnit:'count',sizeCalcEnabled:false,paintItems:[],privateMemo:'',tentativeCheck:false,processing:[],paintColorBake:'',paintColorClear:'',fasteners:[],...x,itemStatus:s};});
 // ステータス「承認OK」追加（確認中と製作中の間に挿入）に伴う一回限りのマイグレーション
 if(!load('istMigV3',false)){
   items=items.map(x=>{const st=x.itemStatus??0;return st>=2?{...x,itemStatus:st+1}:x;});
@@ -3580,7 +3588,7 @@ function submitQaEstModal(){
   const qty=Math.max(1,Math.round(Number(document.getElementById('qa-est-qty').value)||1));
   const type=document.querySelector('input[name="itype"]:checked')?.value||'自社';
   const specNotes=qaEstSpecNoteRows.map(v=>(v||'').trim()).filter(Boolean);
-  items.push({id:nid++,type,site:qaEstSite,product,isEstimate:true,estName,size,finish,qty,estSymbol:'',sizeMode:'free',sizeW:0,sizeH:0,sizeD:0,sizeL:0,qtyUnit:'count',sizeCalcEnabled:false,paintItems:[],privateMemo:'',tentativeCheck:false,cornerCount:0,jointCount:0,materials:[],materialOther:'',thickness:'',steelSpecs:[],steelSpecItems:[],specNotes,processing:[],paintColorBake:'',paintColorClear:'',fasteners:[],processDate:'',makeDeadline:'',clientDeadline:'',orderLimit:false,desiredDate:'',asap:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,deliveredNotInstalled:false,additionalWork:false,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
+  items.push({id:nid++,type,site:qaEstSite,product,isEstimate:true,estName,size,finish,qty,estSymbol:'',sizeMode:'free',sizeW:0,sizeH:0,sizeD:0,sizeL:0,qtyUnit:'count',sizeCalcEnabled:false,paintItems:[],privateMemo:'',tentativeCheck:false,cornerCount:0,jointCount:0,materials:[],materialOther:'',thickness:'',steelSpecs:[],steelSpecItems:[],specNotes,processing:[],paintColorBake:'',paintColorClear:'',fasteners:[],processDate:'',makeDeadline:'',clientDeadline:'',orderLimit:false,desiredDate:'',asap:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,deliveredNotInstalled:false,additionalWork:false,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,productionOk:false,partialOk:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
   uH(qaEstSite,product,null,null,null,estName,finish);
   saveAll();renderItemAlert();renderItems();
   flash('見積り項目を追加しました');
@@ -3948,6 +3956,18 @@ function scheduleItemRender(){
 // 製品一覧・工程表のタグをクリックしたら、その場でフラグを解除（画面遷移なし）
 function toggleItemFlag(id,flag,btn){
   items=items.map(x=>x.id===id?{...x,[flag]:!x[flag],updatedAt:Date.now()}:x);
+  if(btn)btn.style.opacity='.35';
+  saveAll();
+  scheduleItemRender();
+}
+/* 製作OK／一部OKはお客さんの承認状況を表す排他フラグ（同時にONにはできない。片方をONにすればもう片方は自動でOFFになる） */
+function toggleApprovalFlag(id,flag,btn){
+  const other=flag==='productionOk'?'partialOk':'productionOk';
+  items=items.map(x=>{
+    if(x.id!==id)return x;
+    const next=!x[flag];
+    return{...x,[flag]:next,[other]:next?false:x[other],updatedAt:Date.now()};
+  });
   if(btn)btn.style.opacity='.35';
   saveAll();
   scheduleItemRender();
@@ -4418,7 +4438,18 @@ function renderItemRow(x){
   if(x.notOrdered)trStyle+='background:#FFF3D6;outline:1.5px solid #D9420C;outline-offset:-1.5px;';
   else if(w.length)trStyle+='background:#FFF8F5;';
   return`<tr${trStyle?` style="${trStyle}"`:''}>
-    <td><span class="bd ${ITEM_STATUS_C[st]}" onclick="cycleItemStatus(${x.id},this)" style="cursor:pointer;white-space:nowrap">${ITEM_STATUS[st]}${x.asap?' ⚡':''}</span><br><label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:2px;margin-top:3px;white-space:nowrap;font-weight:${x.notOrdered?'700':'400'};color:${x.notOrdered?'#D9420C':'var(--ts)'}"><input type="checkbox" ${x.notOrdered?'checked':''} onchange="toggleItemFlag(${x.id},'notOrdered',this)"> 未発注</label><label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:2px;margin-top:3px;white-space:nowrap;font-weight:${x.outsourceConfirming?'700':'400'};color:${x.outsourceConfirming?'#0E6E7C':'var(--ts)'}" title="工場ボード・工場用コピペにのみ反映されます"><input type="checkbox" ${x.outsourceConfirming?'checked':''} onchange="toggleItemFlag(${x.id},'outsourceConfirming',this)"> 外注確認中</label>${x.type==='外注'?`<label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:2px;margin-top:3px;white-space:nowrap;font-weight:${x.materialOnlyOutsource?'700':'400'};color:${x.materialOnlyOutsource?'#8A5A12':'var(--ts)'}" title="材料・製作のみ外注し、取付は自社で手配する場合にチェックします。人工過不足の計算に含め、外注の取付予定からは除外します"><input type="checkbox" ${x.materialOnlyOutsource?'checked':''} onchange="toggleItemFlag(${x.id},'materialOnlyOutsource',this)"> 材のみ</label>`:''}</td>
+    <td style="min-width:118px">
+      <span class="bd ${ITEM_STATUS_C[st]}" onclick="cycleItemStatus(${x.id},this)" style="cursor:pointer;white-space:nowrap">${ITEM_STATUS[st]}${x.asap?' ⚡':''}</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:5px">
+        <label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:1px 6px 1px 3px;border-radius:4px;white-space:nowrap;font-weight:${x.notOrdered?'700':'400'};color:${x.notOrdered?'#D9420C':'var(--ts)'};background:${x.notOrdered?'#FFF3D6':'transparent'}" title="未発注（チェックを外すと解除されます）"><input type="checkbox" ${x.notOrdered?'checked':''} onchange="toggleItemFlag(${x.id},'notOrdered',this)"> 🛒 未発注</label>
+        <label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:1px 6px 1px 3px;border-radius:4px;white-space:nowrap;font-weight:${x.waitingDrawing?'700':'400'};color:${x.waitingDrawing?'#185FA5':'var(--ts)'};background:${x.waitingDrawing?'#EAF3FF':'transparent'}" title="図面待ち（チェックを外すと解除されます）"><input type="checkbox" ${x.waitingDrawing?'checked':''} onchange="toggleItemFlag(${x.id},'waitingDrawing',this)"> 📐 図面待ち</label>
+        <label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:1px 6px 1px 3px;border-radius:4px;white-space:nowrap;font-weight:${x.waitingCheck?'700':'400'};color:${x.waitingCheck?'#185FA5':'var(--ts)'};background:${x.waitingCheck?'#EAF3FF':'transparent'}" title="チェック待ち（チェックを外すと解除されます）"><input type="checkbox" ${x.waitingCheck?'checked':''} onchange="toggleItemFlag(${x.id},'waitingCheck',this)"> 🔍 チェック待ち</label>
+        <label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:1px 6px 1px 3px;border-radius:4px;white-space:nowrap;font-weight:${x.productionOk?'700':'400'};color:${x.productionOk?'#1B7A3D':'var(--ts)'};background:${x.productionOk?'#DFF7E3':'transparent'}" title="お客さんから全体の承認をもらい、製作OKになっているもの（チェックを外すと解除されます）"><input type="checkbox" ${x.productionOk?'checked':''} onchange="toggleApprovalFlag(${x.id},'productionOk',this)"> ✅ 製作OK</label>
+        <label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:1px 6px 1px 3px;border-radius:4px;white-space:nowrap;font-weight:${x.partialOk?'700':'400'};color:${x.partialOk?'#A66A00':'var(--ts)'};background:${x.partialOk?'#FCEFD1':'transparent'}" title="お客さんから一部だけ承認をもらっているもの（チェックを外すと解除されます）"><input type="checkbox" ${x.partialOk?'checked':''} onchange="toggleApprovalFlag(${x.id},'partialOk',this)"> 🔶 一部OK</label>
+        <label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:1px 6px 1px 3px;border-radius:4px;white-space:nowrap;font-weight:${x.outsourceConfirming?'700':'400'};color:${x.outsourceConfirming?'#0E6E7C':'var(--ts)'};background:${x.outsourceConfirming?'#DFF3F5':'transparent'}" title="工場ボード・工場用コピペにのみ反映されます"><input type="checkbox" ${x.outsourceConfirming?'checked':''} onchange="toggleItemFlag(${x.id},'outsourceConfirming',this)"> 🤝 外注確認中</label>
+        ${x.type==='外注'?`<label style="font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:1px 6px 1px 3px;border-radius:4px;white-space:nowrap;font-weight:${x.materialOnlyOutsource?'700':'400'};color:${x.materialOnlyOutsource?'#8A5A12':'var(--ts)'};background:${x.materialOnlyOutsource?'#F5D9B0':'transparent'}" title="材料・製作のみ外注し、取付は自社で手配する場合にチェックします。人工過不足の計算に含め、外注の取付予定からは除外します"><input type="checkbox" ${x.materialOnlyOutsource?'checked':''} onchange="toggleItemFlag(${x.id},'materialOnlyOutsource',this)"> 🧱 材のみ</label>`:''}
+      </div>
+    </td>
     <td><textarea rows="${prodRows}" oninput="updItemProduct(${x.id},this.value);taGrow(this)" onfocus="this.style.borderColor='var(--bm)';this.style.background='#fff';taGrow(this)" onblur="this.style.borderColor='transparent';this.style.background='transparent';renderItems()" style="width:100%;min-width:180px;padding:2px 4px;border:.5px solid transparent;border-radius:3px;font-size:12px;background:transparent;resize:vertical;overflow:hidden;line-height:1.4;font-family:inherit">${(x.product||'').replace(/</g,'&lt;')}</textarea>${badgeHtml}${(x.createdAt||x.updatedAt)?`<div style="font-size:9px;color:var(--tt);margin-top:2px;white-space:nowrap;display:flex;align-items:center;gap:4px">${x.createdAt?`<span>追加 ${fTS(x.createdAt)}</span>`:''}${x.updatedAt?updatedAtMarkerHtml(x.updatedAt,`更新 ${fTS(x.updatedAt,true)}`):''}</div>`:''}</td>
     ${dateCellsHtml}
     ${itemCols.memo?`<td><textarea class="mi" rows="${memoRows}" oninput="updItemMemo(${x.id},this.value);taGrow(this)" onfocus="taGrow(this)" onblur="renderItems()" style="overflow:hidden">${(x.memo||'').replace(/</g,'&lt;')}</textarea></td>`:''}
@@ -4459,7 +4490,7 @@ function addItem(){
   if(isEst){
     const estName=gv('item-est-name').trim(),size=gv('item-est-size').trim(),finish=gv('item-est-finish').trim();
     const qty=Math.max(1,Math.round(Number(gv('item-est-qty'))||1));
-    items.push({id:nid++,type,site:s,product:p,isEstimate:true,estName,size,finish,qty,estSymbol:'',sizeMode:'free',sizeW:0,sizeH:0,sizeD:0,sizeL:0,qtyUnit:'count',sizeCalcEnabled:false,paintItems:[],privateMemo:'',tentativeCheck:false,cornerCount:0,jointCount:0,materials:[],materialOther:'',thickness:'',steelSpecs:[],steelSpecItems:[],specNotes:[],processing:[],paintColorBake:'',paintColorClear:'',fasteners:[],processDate:'',makeDeadline:'',clientDeadline:'',orderLimit:false,desiredDate:'',asap:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,deliveredNotInstalled:false,additionalWork:false,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
+    items.push({id:nid++,type,site:s,product:p,isEstimate:true,estName,size,finish,qty,estSymbol:'',sizeMode:'free',sizeW:0,sizeH:0,sizeD:0,sizeL:0,qtyUnit:'count',sizeCalcEnabled:false,paintItems:[],privateMemo:'',tentativeCheck:false,cornerCount:0,jointCount:0,materials:[],materialOther:'',thickness:'',steelSpecs:[],steelSpecItems:[],specNotes:[],processing:[],paintColorBake:'',paintColorClear:'',fasteners:[],processDate:'',makeDeadline:'',clientDeadline:'',orderLimit:false,desiredDate:'',asap:false,noSchedule:false,waitingDrawing:false,waitingCheck:false,deliveredNotInstalled:false,additionalWork:false,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,productionOk:false,partialOk:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
     uH(s,p,null,null,null,estName,finish);
     ['item-s','item-p','item-est-name','item-est-size','item-est-finish'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('item-est-qty').value=1;
@@ -4468,7 +4499,7 @@ function addItem(){
   }
   if(!p)return;
   const pd=gv('item-pd'),md=type==='自社'?(pd?(()=>{const d=new Date(pd+'T00:00:00');d.setDate(d.getDate()-14);return ymd(d)})():''):'',cl=gv('item-cl'),asap=document.getElementById('item-asap').checked,noSchedule=document.getElementById('item-nos').checked,waitingDrawing=document.getElementById('item-wd').checked,waitingCheck=document.getElementById('item-ck').checked,orderLimit=document.getElementById('item-ol').checked,deliveredNotInstalled=document.getElementById('item-dni').checked,additionalWork=document.getElementById('item-aw').checked,installManpower=Number(gv('item-im'))||0,deliveryOnly=document.getElementById('item-do').checked;
-  items.push({id:nid++,type,site:s,product:p,processDate:pd,makeDeadline:md,clientDeadline:cl,orderLimit,desiredDate:'',asap,noSchedule,waitingDrawing,waitingCheck,deliveredNotInstalled,additionalWork,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower,deliveryOnly,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
+  items.push({id:nid++,type,site:s,product:p,processDate:pd,makeDeadline:md,clientDeadline:cl,orderLimit,desiredDate:'',asap,noSchedule,waitingDrawing,waitingCheck,deliveredNotInstalled,additionalWork,inProgress:false,itemStatus:0,outsourceCompany:'',memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,productionOk:false,partialOk:false,installManpower,deliveryOnly,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
   uH(s,p,null);['item-s','item-p','item-pd','item-cl','item-im'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('item-asap').checked=false;
   document.getElementById('item-nos').checked=false;
@@ -4523,7 +4554,7 @@ function stepManpower(id,delta){
 // 複製関数
 function dupeItem(id){
   const x=items.find(i=>i.id===id);if(!x)return;
-  const newItem={...x,id:nid++,product:x.product+'（コピー）',itemStatus:0,deliveredNotInstalled:false,additionalWork:false,memo:'',installDate:'',createdAt:Date.now(),updatedAt:Date.now()};
+  const newItem={...x,id:nid++,product:x.product+'（コピー）',itemStatus:0,deliveredNotInstalled:false,additionalWork:false,productionOk:false,partialOk:false,memo:'',installDate:'',createdAt:Date.now(),updatedAt:Date.now()};
   items.push(newItem);editItemId=newItem.id;
   saveAll();flash('複製しました（進捗は未着手にリセット）　→ 日程・内容を調整してください');renderItemAlert();renderItems();
 }
@@ -5743,6 +5774,7 @@ function renderSites(){
     const itemB=li.length?`<button class="copy-btn" style="font-size:9px;padding:2px 7px;border-color:#C5DAF5;color:#185FA5;margin-left:auto" onclick="goToItemWithSite('${site.replace(/'/g,"\\'")}','')"><i class="ti ti-package"></i> 製品${li.length}件</button>`:'';
     const lineCpid=site?'cpbtn-siteline-'+site.replace(/[\s\W]/g,'_'):'';
     const lineB=site?`<button class="copy-btn" id="${lineCpid}" style="font-size:9px;padding:2px 7px${li.length?'':';margin-left:auto'}" onclick="copySiteLineText('${site.replace(/'/g,"\\'")}')"><i class="ti ti-copy"></i> LINEコピー</button>`:'';
+    const delGroupB=`<button class="copy-btn" style="font-size:9px;padding:2px 7px;border-color:#B23A3A;color:#B23A3A${(li.length||site)?'':';margin-left:auto'}" onclick="delSiteSchedules('${site.replace(/'/g,"\\'")}')" title="この現場の現場予定を全て削除します（製品は削除されません）"><i class="ti ti-trash"></i> 一括削除（${bySite[site].length}件）</button>`;
     const rows=bySite[site].map(s=>{
       if(editSiteId===s.id)return`<tr>${siteEditCells(s,7)}</tr>`;
       const c=siteRowCells(s,'co');
@@ -5754,6 +5786,7 @@ function renderSites(){
         ${site?siteManpowerBadge(site):''}
         ${itemB}
         ${lineB}
+        ${delGroupB}
       </div>
       <div style="overflow-x:auto;border:.5px solid var(--bt);border-radius:0 0 6px 6px">
         <table class="tbl" style="margin:0">
@@ -5913,6 +5946,14 @@ function syncSiteWorkDaysAvailability(){
   if(!has)wdEl.value='1';
 }
 function delSite(id){if(!confirm('この現場予定を削除しますか？'))return;sites=sites.filter(s=>s.id!==id);saveAll();refreshSiteView();}
+/* 現場予定の現場ごと一括削除：その現場名に紐づく現場予定だけを削除する（製品は削除しない。製品ごと消したい場合はdelSiteGroupを使う） */
+function delSiteSchedules(site){
+  const rel=sites.filter(s=>(s.site||'')===site);
+  if(!rel.length)return;
+  if(!confirm(`「${site||'（現場名未入力）'}」の現場予定${rel.length}件を削除しますか？（製品は削除されません）`))return;
+  sites=sites.filter(s=>(s.site||'')!==site);
+  saveAll();refreshSiteView();
+}
 
 function renderCoConfirm(){
   renderCoGroup('pending','co-list-pending');
@@ -6186,7 +6227,7 @@ function confirmReceive(){
   const cl=gv('rcv-cl');
   const srcPend=rcvPendId!=null?pends.find(x=>x.id===rcvPendId):null;
   const outsourceCompany=srcPend?.outsourceCompany||'';
-  items.push({id:nid++,type,site,product:prod,processDate:pd,makeDeadline:md,clientDeadline:cl,desiredDate:dd,asap,itemStatus:0,outsourceCompany,memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
+  items.push({id:nid++,type,site,product:prod,processDate:pd,makeDeadline:md,clientDeadline:cl,desiredDate:dd,asap,itemStatus:0,outsourceCompany,memo:'',notOrdered:false,outsourceConfirming:false,materialOnlyOutsource:false,productionOk:false,partialOk:false,installManpower:0,deliveryOnly:false,readyAsap:false,installTarget:false,installDate:'',installDays:1,materialCost:0,manpowerDrawing:0,manpowerProduction:0,transportationCost:0,coefOther:0,itemBreakdown:[],materialQuotes:[],coeffs:{drawing:'',productionDifficulty:'',finishDifficulty:'',lot:'',delivery:''},actualQuote:'',actualMaterialCost:'',actualManpowerDrawing:'',actualManpowerProduction:'',createdAt:Date.now(),updatedAt:Date.now()});
   if(addSiteChk&&pd){
     sites.push({id:nid++,dateStart:pd,dateEnd:pd,site,shift:0,count:1,company:'',status:0,memo:''});
     uH(site,null,null);
