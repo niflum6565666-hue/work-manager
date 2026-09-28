@@ -247,6 +247,10 @@ body{font-family:var(--fn);color:var(--tp);font-size:13px;background:#eeede9;dis
         <div id="pipe-bar" style="display:flex;gap:2px;height:6px;border-radius:3px;overflow:hidden;margin-top:5px;background:var(--bs)"></div>
       </div>
       <div>
+        <div class="sh">✅ 承認OK・一部OK</div>
+        <div id="dash-approved"></div>
+      </div>
+      <div>
         <div class="sh" style="display:flex;justify-content:space-between;align-items:center">
           製品一覧（日程順）
           <label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:400;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--ts)"><input type="checkbox" id="dash-done-chk" onchange="renderDash()"> 完了を含む</label>
@@ -3665,9 +3669,28 @@ function buildLineText(co,siteMap,mode='pending'){
 }
 
 /* ===== DASHBOARD ===== */
+/* お客さんの承認状況（製作OK／一部OK）を一覧化。取付予定日で並べ、ステータスバッジと取付予定日を一緒に表示する */
+function renderApprovedBox(){
+  const el=document.getElementById('dash-approved');if(!el)return;
+  const list=items.filter(x=>!isDone(x)&&(x.productionOk||x.partialOk));
+  if(!list.length){el.innerHTML='<p class="nd">承認済みの項目はありません</p>';return;}
+  const sorted=[...list].sort((a,b)=>(a.installDate||'9999-99-99').localeCompare(b.installDate||'9999-99-99'));
+  el.innerHTML=sorted.map(x=>{
+    const tag=x.productionOk
+      ?`<span style="background:#DFF7E3;color:#1B7A3D;font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;white-space:nowrap;flex-shrink:0">✅ 製作OK</span>`
+      :`<span style="background:#FCEFD1;color:#A66A00;font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;white-space:nowrap;flex-shrink:0">🔶 一部OK</span>`;
+    return`<div class="focus-row">
+      ${tag}
+      <span class="bd ${ITEM_STATUS_C[x.itemStatus??0]}" onclick="cycleItemStatus(${x.id},this);renderApprovedBox()" style="cursor:pointer;font-size:9px;flex-shrink:0">${ITEM_STATUS[x.itemStatus??0]}</span>
+      <span style="flex:1;min-width:0;font-size:11px;color:var(--ts);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(x.site||'')} ${escH(x.product||'')}</span>
+      <span style="font-size:10px;color:var(--ts);white-space:nowrap;flex-shrink:0">${x.installDate?`取付予定 ${fD(x.installDate)}`:'取付予定日未定'}</span>
+    </div>`;
+  }).join('');
+}
 function renderDash(){
   const notOrderedEl=document.getElementById('notordered-alert');if(notOrderedEl)notOrderedEl.innerHTML=notOrderedWarnHtml();
   renderFocus();
+  renderApprovedBox();
   renderAiAdvisorBox();
   // パイプライン（実際に使われている8段階ステータス＝itemStatusを集計元にする）
   const pendActive=pends.filter(p=>p.status<3); // 受注前
@@ -5557,6 +5580,12 @@ function factoryDateTagHtml(dateKey,hasAsap){
   return`<span style="font-size:11px;color:#888">${fD(dateKey)}　残${d<14?`${d}日`:`${Math.round(d/7)}週`}${workExtra}</span>`;
 }
 /* 1ステータス分：現場ごとにまとめ、現場内は日付でグループ化して品名を箇条書きにする（買い出し文のbuildSiteBlocksと同じ考え方） */
+/* お客さんの承認状況（製作OK／一部OK）をボード・ボード画像側にも表示するための共通マーカー。short:trueなら絵文字のみ（右下の日程一覧など省スペース向け） */
+function approvalTag(x,short){
+  if(x.productionOk)return short?' ✅':'<span style="color:#1B7A3D;font-weight:700"> ✅製作OK</span>';
+  if(x.partialOk)return short?' 🔶':'<span style="color:#A66A00;font-weight:700"> 🔶一部OK</span>';
+  return'';
+}
 function buildFactoryBoardSection(rows){
   if(!rows.length)return`<div style="font-size:11px;color:#ccc;padding:2px 0 0 2px">なし</div>`;
   const bySite={};
@@ -5574,7 +5603,7 @@ function buildFactoryBoardSection(rows){
     const groupsHtml=orderedKeys.map(k=>{
       const gi=byDate[k];
       const tagHtml=factoryDateTagHtml(k,gi.some(x=>x.asap));
-      const itemsHtml=gi.map(x=>`<div style="font-size:11.5px;line-height:1.5;color:#333;margin:0 0 3px 13px">・${escH(x.product||'')}${x.type==='外注'?'（外注）':''}${x.outsourceConfirming?'<span style="color:#0E6E7C;font-weight:700"> 外注確認中</span>':''}${x.memo?`<span style="color:#999;font-style:italic"> →${escH(x.memo)}</span>`:''}</div>`).join('');
+      const itemsHtml=gi.map(x=>`<div style="font-size:11.5px;line-height:1.5;color:#333;margin:0 0 3px 13px">・${escH(x.product||'')}${x.type==='外注'?'（外注）':''}${approvalTag(x)}${x.outsourceConfirming?'<span style="color:#0E6E7C;font-weight:700"> 外注確認中</span>':''}${x.memo?`<span style="color:#999;font-style:italic"> →${escH(x.memo)}</span>`:''}</div>`).join('');
       return`<div style="margin:3px 0 2px 2px">${tagHtml}</div>${itemsHtml}`;
     }).join('');
     return`<div style="margin-top:${i===0?'0':'11'}px">
@@ -5593,7 +5622,7 @@ function buildFactoryInstallColumn(rows){
   return orderedKeys.map((k,i)=>{
     const gi=byDate[k];
     const tagHtml=factoryDateTagHtml(k,gi.some(x=>x.asap));
-    const itemsHtml=gi.map(x=>`<div style="font-size:11.5px;line-height:1.45;color:#333;margin:0 0 5px 2px">・${escH(x.product||'')}${x.type==='外注'?'（外注）':''}${x.outsourceConfirming?'<span style="color:#0E6E7C;font-weight:700"> 外注確認中</span>':''}<div style="font-size:10px;color:#999;margin-left:13px">${escH(x.site||'')}</div></div>`).join('');
+    const itemsHtml=gi.map(x=>`<div style="font-size:11.5px;line-height:1.45;color:#333;margin:0 0 5px 2px">・${escH(x.product||'')}${x.type==='外注'?'（外注）':''}${approvalTag(x)}${x.outsourceConfirming?'<span style="color:#0E6E7C;font-weight:700"> 外注確認中</span>':''}<div style="font-size:10px;color:#999;margin-left:13px">${escH(x.site||'')}</div></div>`).join('');
     return`<div style="margin:${i===0?'0':'8'}px 0 3px 0">${tagHtml}</div>${itemsHtml}`;
   }).join('');
 }
@@ -5601,7 +5630,7 @@ function buildFactoryInstallColumn(rows){
 function buildFactorySchedule(rows){
   const dated=rows.filter(x=>(x.installDate||x.processDate));
   if(!dated.length)return`<div style="font-size:11px;color:#ccc">なし</div>`;
-  const list=dated.map(x=>({date:x.installDate||x.processDate,site:x.site||'—',name:x.product||''}))
+  const list=dated.map(x=>({date:x.installDate||x.processDate,site:x.site||'—',name:x.product||'',ok:approvalTag(x,true)}))
     .sort((a,b)=>a.date.localeCompare(b.date)||a.site.localeCompare(b.site,'ja')||a.name.localeCompare(b.name,'ja'));
   let lastDate=null,lastSite=null;
   return list.map((r,i)=>{
@@ -5611,7 +5640,7 @@ function buildFactorySchedule(rows){
     return`<div style="display:flex;gap:8px;padding:4px 0;${i===0?'':'border-top:1px solid rgba(0,0,0,.05)'}">
       <div style="width:58px;flex-shrink:0;font-size:10.5px;color:#888;white-space:nowrap;padding-top:1px">${showDate?fD(r.date):''}</div>
       <div style="width:82px;flex-shrink:0;font-size:10.5px;font-weight:600;color:#333;line-height:1.4">${showSite?escH(r.site):''}</div>
-      <div style="flex:1;min-width:0;font-size:10.5px;color:#444;line-height:1.4;word-break:break-all">${escH(r.name)}</div>
+      <div style="flex:1;min-width:0;font-size:10.5px;color:#444;line-height:1.4;word-break:break-all">${escH(r.name)}${r.ok}</div>
     </div>`;
   }).join('');
 }
