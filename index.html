@@ -4298,6 +4298,7 @@ function renderItems(){
   });
   document.getElementById('item-groups').innerHTML=siteOrder.map(site=>{
     const siteItems=bySite[site],pending=siteItems.filter(x=>!isDone(x));
+    const outsourcePending=pending.filter(x=>x.type==='外注');
     let lastType=null,bodyRows='';
     siteItems.forEach(x=>{
       if(x.type!==lastType){
@@ -4339,6 +4340,7 @@ function renderItems(){
         <span style="font-size:10px;color:var(--ts)">現場予定：</span>${siteStHtml}
         ${siteManpowerBadge(site)}
         ${pending.length?`<button class="copy-btn" id="icpbtn-${sid}" onclick="copyItemSite('${site.replace(/'/g,"\\'")}',this)"><i class="ti ti-copy"></i> 発注依頼コピー</button>`:''}
+        ${outsourcePending.length?`<button class="copy-btn" id="ocpbtn-${sid}" style="border-color:#0E6E7C;color:#0E6E7C" onclick="copyOutsourceConfirm('${site.replace(/'/g,"\\'")}',this)" title="外注先へ、既に依頼している内容の確認用コピーを作成します"><i class="ti ti-copy"></i> 外注確認コピー</button>`:''}
         <button class="copy-btn" style="border-color:#0F6E56;color:#0F6E56" onclick="completeSiteGroup('${siteEsc}')" title="この現場の製品を全て完了にし、一番下に移動します">✅</button>
         <button class="copy-btn" style="border-color:#B23A3A;color:#B23A3A" onclick="delSiteGroup('${siteEsc}')" title="この現場の製品と現場予定を全て削除します">🗑️</button>
       </div>
@@ -5398,6 +5400,48 @@ function copyItemSite(site,btnEl){
     const orig=btn.innerHTML;
     btn.classList.add('ok');
     btn.innerHTML=btnEl?'✓ コピー済':'<i class="ti ti-check"></i> コピー済';
+    setTimeout(()=>{btn.classList.remove('ok');btn.innerHTML=orig;},2500);
+  });
+}
+/* 外注先への確認用コピー：お客さん向けの発注依頼コピーとは別に、「既に外注先へお願いしている内容」を現場一式でまとめて確認できるようにする。
+   現場は丸ごと外注することが多いため、現場単位でグループ化し、完了以外の外注項目（type==='外注'）を品名・状態・日程・メモ付きで列挙する */
+function buildOutsourceConfirmText(site,siteItems){
+  const today=new Date(),ymd=`${today.getMonth()+1}月${today.getDate()}日`;
+  const rows=siteItems.filter(x=>x.type==='外注'&&!isDone(x)&&!x.isEstimate);
+  if(!rows.length)return'';
+  const byStatus={};
+  rows.forEach(x=>{const st=x.itemStatus??0;(byStatus[st]=byStatus[st]||[]).push(x);});
+  const hr='ーーーーーーーー';
+  // ステータスごとに添える一言（印象が悪くならないよう、お願いベースの柔らかい言い回しにする）
+  const STATUS_NOTES={4:'　　　※こちらで製作いただける内容は、すでにお渡しできているかと思っております。\n　　　　不足や不備がございましたら、お手数ですがご連絡いただけますと幸いです。'};
+  let t=`${site}　ご依頼内容の確認（${ymd}現在）\n\n`;
+  t+=`いつもお世話になっております。\n現在ご依頼している内容は下記の通りです。\n認識に相違がございましたらご連絡ください。\n\n`;
+  Object.keys(byStatus).map(Number).sort((a,b)=>a-b).forEach(st=>{
+    const group=[...byStatus[st]].sort((a,b)=>{
+      const da=a.installDate||a.processDate||'9999-99-99',db=b.installDate||b.processDate||'9999-99-99';
+      return da.localeCompare(db);
+    });
+    t+=`${hr}\n${ITEM_STATUS[st]}\n${hr}\n\n`;
+    if(STATUS_NOTES[st])t+=`${STATUS_NOTES[st]}\n\n`;
+    group.forEach(x=>{
+      const dateStr=x.installDate?`${x.deliveryOnly?'納期':'取付予定日'}：${fD(x.installDate)}`:(x.processDate?`工程日：${fD(x.processDate)}`:'日程未定');
+      t+=`・${x.product}　　${dateStr}\n`;
+      if(x.memo)t+=`　→${x.memo}\n`;
+      t+='\n';
+    });
+  });
+  t+=`引き続きよろしくお願いいたします。`;
+  return t;
+}
+function copyOutsourceConfirm(site,btnEl){
+  const text=buildOutsourceConfirmText(site,items.filter(x=>x.site===site&&!x.isEstimate));
+  if(!text){alert('外注項目なし');return;}
+  navigator.clipboard.writeText(text).then(()=>{
+    const sid=site.replace(/\W/g,'_'),btn=btnEl||document.getElementById('ocpbtn-'+sid);
+    if(!btn)return;
+    const orig=btn.innerHTML;
+    btn.classList.add('ok');
+    btn.innerHTML='✓ コピー済';
     setTimeout(()=>{btn.classList.remove('ok');btn.innerHTML=orig;},2500);
   });
 }
